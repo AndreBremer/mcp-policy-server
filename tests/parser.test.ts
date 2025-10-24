@@ -443,6 +443,49 @@ describe('parser', () => {
       const refs = findEmbeddedReferences(content);
       expect(refs).toEqual(['§APP.7', '§META.2', '§SYS.3']);
     });
+
+    it('should exclude references inside inline code blocks', () => {
+      const content = 'Example: `§APP.7` is shown here';
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual([]);
+    });
+
+    it('should exclude references inside standard fenced code blocks', () => {
+      const content = 'See this example:\n```\n§APP.7\n§META.2\n```\nOutside code';
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual([]);
+    });
+
+    it('should exclude references inside extended fenced code blocks (4 backticks)', () => {
+      const content = 'Example:\n````\n§APP.7\n```\nNested code\n```\n§META.2\n````\nOutside';
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual([]);
+    });
+
+    it('should exclude references inside extended fenced code blocks (5 backticks)', () => {
+      const content = 'Example:\n`````\n§APP.7\n````\nNested code\n````\n§META.2\n`````\nOutside';
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual([]);
+    });
+
+    it('should find references outside code blocks but not inside', () => {
+      const content = '§APP.7 is real. Code: `§META.2` and ```\n§SYS.3\n``` but §USER.4 is real.';
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual(['§APP.7', '§USER.4']);
+    });
+
+    it('should handle multiple code blocks with references between them', () => {
+      const content = '§APP.7 first, `§META.1` ignored, §SYS.2 found, ```§USER.3``` ignored, §APP.8 last';
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual(['§APP.7', '§SYS.2', '§APP.8']);
+    });
+
+    it('should handle mismatched fence lengths correctly', () => {
+      const content = '````\n§APP.7 inside 4-tick fence\n```\nThis closes with only 3 ticks but fence needs 4+';
+      const refs = findEmbeddedReferences(content);
+      // With proper fence matching, §APP.7 should be excluded
+      expect(refs).toEqual([]);
+    });
   });
 
   describe('isParentSection', () => {

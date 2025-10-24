@@ -260,6 +260,9 @@ function extractRange(lines: string[], startPattern: RegExp, stopPattern: RegExp
  * Supports ranges (§APP.4.1-3) and extended prefixes (§APP-HOOK.2).
  * Returns fully qualified references with § prefix intact.
  *
+ * Excludes § references inside code blocks (backticks) to avoid false
+ * positives from example code.
+ *
  * @param content - Text content to scan for references
  * @returns Array of section notations found (with § prefix)
  *
@@ -272,16 +275,36 @@ function extractRange(lines: string[], startPattern: RegExp, stopPattern: RegExp
  * const rangeContent = 'Refer to §APP.4.1-3 for implementation';
  * findEmbeddedReferences(rangeContent)
  * // Returns: ['§APP.4.1-3']
+ *
+ * const codeContent = 'Example: `§APP.7` is shown here';
+ * findEmbeddedReferences(codeContent)
+ * // Returns: [] (excludes references in code blocks)
  * ```
  */
 export function findEmbeddedReferences(content: string): SectionNotation[] {
   const matches: SectionNotation[] = [];
-  let match: RegExpExecArray | null;
+
+  // Remove all code blocks (inline and fenced) before scanning for references
+  // This prevents § references in example code from being treated as real references
+  let cleanedContent = content;
+
+  // Remove fenced code blocks with proper fence length matching
+  // Must match closing fence with same or more backticks as opening fence
+  // Process from longest to shortest to handle nested fences correctly
+  for (let tickCount = 10; tickCount >= 3; tickCount--) {
+    const ticks = '`'.repeat(tickCount);
+    const fencePattern = new RegExp(`${ticks}[\\s\\S]*?${ticks}`, 'g');
+    cleanedContent = cleanedContent.replace(fencePattern, '');
+  }
+
+  // Remove inline code blocks (`...`)
+  cleanedContent = cleanedContent.replace(/`[^`]*`/g, '');
 
   // Reset lastIndex before starting (global regex maintains state)
   const pattern = new RegExp(SECTION_ID_PATTERN.source, SECTION_ID_PATTERN.flags);
 
-  while ((match = pattern.exec(content)) !== null) {
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(cleanedContent)) !== null) {
     matches.push(`§${match[1]}.${match[2]}` as SectionNotation);
   }
 
