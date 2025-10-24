@@ -217,7 +217,7 @@ export function handleFetch(args: any, config: ServerConfig): ToolResponse {
     if (chunk.hasMore) {
       response.content.push({
         type: 'text',
-        text: `\n\n---\n**CRITICAL: INCOMPLETE RESPONSE - MORE CHUNKS REQUIRED**\n\n**Action Required:** You MUST call fetch again with:\n- Same sections parameter: ${JSON.stringify(sections)}\n- continuation="${chunk.continuation}"\n\n**Example:**\n\`\`\`\nmcp__plugin_para_server__fetch({\n  sections: ${JSON.stringify(sections)},\n  continuation: "${chunk.continuation}"\n})\n\`\`\`\n\n**Do NOT proceed without fetching remaining chunks** - your task requires complete documentation.`,
+        text: `\n\n---\n**INCOMPLETE RESPONSE - CONTINUATION REQUIRED**\n\nCall fetch again with: sections=${JSON.stringify(sections)}, continuation="${chunk.continuation}"`,
       });
     }
 

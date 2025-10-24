@@ -359,7 +359,8 @@ export function fetchSections(sections: string[], config: ServerConfig): string 
     }
   }
 
-  return parts.join('\n---\n\n');
+  // Join sections without adding separators - sections already have trailing separators in the markdown
+  return parts.join('\n');
 }
 
 /**

@@ -158,7 +158,7 @@ export function loadConfig(configPath?: string): ServerConfig {
   const config: ServerConfig = {
     stems: policiesManifest.prefixes,
     baseDir,
-    maxChunkTokens: 10000,
+    maxChunkTokens: 8000,
   };
 
   // Validate before returning
