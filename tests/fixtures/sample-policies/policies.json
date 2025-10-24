@@ -1,0 +1,12 @@
+{
+  "prefixes": {
+    "TEST": "policy-test",
+    "META": "policy-meta",
+    "APP": "policy-app",
+    "SYS": "policy-sys",
+    "DUP": "policy-duplicate1",
+    "SUB": "policy-subsections",
+    "EMPTY": "policy-empty",
+    "LARGE": "policy-large"
+  }
+}
