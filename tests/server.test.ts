@@ -151,7 +151,7 @@ describe('MCP Server Integration', () => {
           );
 
           expect(response.content.length).toBeGreaterThan(1);
-          expect(response.content[1].text).toContain('MORE CHUNKS REQUIRED');
+          expect(response.content[1].text).toContain('INCOMPLETE RESPONSE - CONTINUATION REQUIRED');
           expect(response.content[1].text).toContain('continuation');
         });
 

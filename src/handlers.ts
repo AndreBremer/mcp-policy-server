@@ -204,11 +204,19 @@ export function handleFetch(args: any, config: ServerConfig): ToolResponse {
     }
 
     const chunk = chunks[chunkIndex];
+
+    // Remove trailing divider and whitespace from chunk content before adding continuation
+    let content = chunk.content;
+    if (chunk.hasMore) {
+      // Remove trailing --- divider and surrounding whitespace
+      content = content.replace(/\n*---\n*\s*$/, '').trimEnd();
+    }
+
     const response: ToolResponse = {
       content: [
         {
           type: 'text',
-          text: chunk.content,
+          text: content,
         },
       ],
     };
@@ -217,7 +225,7 @@ export function handleFetch(args: any, config: ServerConfig): ToolResponse {
     if (chunk.hasMore) {
       response.content.push({
         type: 'text',
-        text: `\n\n---\n**INCOMPLETE RESPONSE - CONTINUATION REQUIRED**\n\nCall fetch again with: sections=${JSON.stringify(sections)}, continuation="${chunk.continuation}"`,
+        text: `\n\n---\n**CRITICAL: INCOMPLETE RESPONSE - MANDATORY CONTINUATION REQUIRED**\n\nCall fetch again with: sections=${JSON.stringify(sections)}, continuation="${chunk.continuation}"`,
       });
     }
 
