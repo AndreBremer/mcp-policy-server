@@ -281,9 +281,12 @@ export function findEmbeddedReferences(content: string): SectionNotation[] {
   // Remove fenced code blocks with proper fence length matching
   // Must match closing fence with same or more backticks as opening fence
   // Process from longest to shortest to handle nested fences correctly
+  // Pattern accounts for optional language identifier after opening fence
+  // Also handles unclosed fenced blocks (common in extracted sections)
   for (let tickCount = 10; tickCount >= 3; tickCount--) {
     const ticks = '`'.repeat(tickCount);
-    const fencePattern = new RegExp(`${ticks}[\\s\\S]*?${ticks}`, 'g');
+    // Match: ```[optional-language]\n content \n``` OR ```[optional-language]\n content (until end)
+    const fencePattern = new RegExp(`${ticks}[^\\n]*\\n[\\s\\S]*?(?:\\n${ticks}|$)`, 'g');
     cleanedContent = cleanedContent.replace(fencePattern, '');
   }
 

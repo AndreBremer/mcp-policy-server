@@ -225,12 +225,17 @@ export function gatherSections(
   const effectiveBaseDir = baseDir || config.baseDir;
 
   const gathered = new Map<string, GatheredSection>();
-  const queue: string[] = [...initialSections];
+  const queue: Array<{ notation: string; referredBy: string | null }> = initialSections.map((n) => ({
+    notation: n,
+    referredBy: null,
+  }));
   const processed = new Set<string>();
 
   while (queue.length > 0) {
-    const notation = queue.shift();
-    if (!notation) continue;
+    const item = queue.shift();
+    if (!item) continue;
+
+    const { notation, referredBy } = item;
 
     if (processed.has(notation)) continue;
 
@@ -258,10 +263,26 @@ export function gatherSections(
 
     processed.add(notation);
 
-    const parsed = parseSectionNotation(notation);
+    let parsed;
+    try {
+      parsed = parseSectionNotation(notation);
+    } catch (error) {
+      const refContext = referredBy ? ` (referenced by ${referredBy})` : '';
+      throw new Error(
+        `Invalid section notation "${notation}"${refContext}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
 
     // Discover all policy files for this prefix (base + extensions)
-    const policyFiles = discoverPolicyFiles(parsed.prefix, config, effectiveBaseDir);
+    let policyFiles;
+    try {
+      policyFiles = discoverPolicyFiles(parsed.prefix, config, effectiveBaseDir);
+    } catch (error) {
+      const refContext = referredBy ? ` (referenced by ${referredBy})` : '';
+      throw new Error(
+        `Failed to resolve section "${notation}"${refContext}: ${error instanceof Error ? error.message : String(error)}. Check your policies.json configuration at ${config.baseDir}/policies.json`
+      );
+    }
 
     // Search across all discovered files for the section
     let content: string | null = null;
@@ -288,7 +309,11 @@ export function gatherSections(
     }
 
     if (!content || content.trim().length === 0) {
-      throw new Error(`Section not found: ${notation} in ${policyFiles.join(', ')}`);
+      const fileList = policyFiles.map((f) => `${effectiveBaseDir}/${f}`).join(', ');
+      const refContext = referredBy ? ` (referenced by ${referredBy})` : '';
+      throw new Error(
+        `Section "${notation}" not found${refContext}. Searched in: ${fileList}. Verify the section exists with marker "## {${notation}}" or "### {${notation}}".`
+      );
     }
 
     if (!foundInFile) {
@@ -307,8 +332,8 @@ export function gatherSections(
     // Expand any range notation in embedded references
     const expandedEmbedded = embedded.flatMap((ref) => expandRange(ref));
     for (const ref of expandedEmbedded) {
-      if (!processed.has(ref) && !queue.includes(ref)) {
-        queue.push(ref);
+      if (!processed.has(ref) && !queue.some((item) => item.notation === ref)) {
+        queue.push({ notation: ref, referredBy: notation });
       }
     }
   }

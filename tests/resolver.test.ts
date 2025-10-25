@@ -235,7 +235,7 @@ describe('resolver', () => {
     it('should throw error for missing section', () => {
       expect(() => {
         resolver.gatherSections(['§APP.99'], testConfig, policiesDir);
-      }).toThrow(/Section not found: §APP.99/);
+      }).toThrow(/Section "§APP.99" not found/);
     });
 
     it('should search across multiple files for section', () => {
@@ -386,7 +386,7 @@ describe('resolver', () => {
     it('should throw error for missing section', () => {
       expect(() => {
         resolver.fetchSections(['§APP.99'], testConfig);
-      }).toThrow(/Section not found: §APP.99/);
+      }).toThrow(/Section "§APP.99" not found/);
     });
 
     it('should separate sections with newlines and separators', () => {
@@ -454,7 +454,7 @@ describe('resolver', () => {
     it('should throw error for missing section', () => {
       expect(() => {
         resolver.resolveSectionLocations(['§APP.99'], testConfig);
-      }).toThrow(/Section not found: §APP.99/);
+      }).toThrow(/Section "§APP.99" not found/);
     });
 
     it('should handle multiple sections from same file', () => {
@@ -520,6 +520,22 @@ describe('resolver', () => {
       );
 
       expect(Object.keys(locations).length).toBeGreaterThanOrEqual(4);
+    });
+
+    it('should show reference chain in error for embedded references', () => {
+      // Add BADREF to test config
+      const configWithBadRef = {
+        ...testConfig,
+        stems: {
+          ...testConfig.stems,
+          BADREF: 'policy-with-bad-ref',
+        },
+      };
+
+      // §BADREF.1 contains reference to §MISSING.99
+      expect(() => {
+        resolver.gatherSections(['§BADREF.1'], configWithBadRef, policiesDir);
+      }).toThrow(/§MISSING\.99.*\(referenced by §BADREF\.1\)/);
     });
   });
 

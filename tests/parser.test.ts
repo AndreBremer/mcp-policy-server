@@ -515,6 +515,34 @@ describe('parser', () => {
       expect(refs).toEqual(['§APP.7', '§SYS.2', '§APP.8']);
     });
 
+    it('should handle unclosed fenced code blocks (common in extracted sections)', () => {
+      // This occurs when extractSection stops at next section marker before closing fence
+      const content = `
+### Example
+
+\`\`\`markdown
+## {§VAL.1} Section
+Content with §VAL.2 reference
+`;
+      const refs = findEmbeddedReferences(content);
+      // Should not find §VAL references since they're in unclosed fence
+      expect(refs).toEqual([]);
+    });
+
+    it('should handle fenced blocks with language identifiers', () => {
+      const content = `
+Text before
+
+\`\`\`typescript
+const ref = "§APP.7";
+\`\`\`
+
+Text after with §META.2
+`;
+      const refs = findEmbeddedReferences(content);
+      expect(refs).toEqual(['§META.2']); // Only real reference, not the one in code
+    });
+
     it('should handle mismatched fence lengths correctly', () => {
       const content =
         '````\n§APP.7 inside 4-tick fence\n```\nThis closes with only 3 ticks but fence needs 4+';
