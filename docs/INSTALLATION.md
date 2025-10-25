@@ -37,32 +37,17 @@ See [Getting Started Guide](GETTING_STARTED.md) to create policies.json and poli
 ```bash
 claude mcp add --transport stdio policy-server \
   npx -y @andrebremer/mcp-policy-server \
-  --env MCP_POLICY_CONFIG=~/my-project/policies/policies.json \
-  --scope local
+  --env MCP_POLICY_CONFIG=[relative/path/to/policies.json] \
+  --scope project
 ```
 
-**Windows:**
-```powershell
-claude mcp add --transport stdio policy-server `
-  cmd /c npx -y @andrebremer/mcp-policy-server `
-  --env MCP_POLICY_CONFIG=C:/my-project/policies/policies.json `
-  --scope local
-```
+**Windows:** CLI installation on Windows is currently unsupported due to `cmd /c` wrapper requirements and path escaping issues. Use Manual Configuration (Option 2) instead.
 
-**Note:** Windows paths use forward slashes in configuration files.
+### Option 2: Manual Configuration (Recommended for Windows)
 
-#### Step 3: Verify Installation
+#### Create .mcp.json in Your Project Root
 
-```bash
-claude mcp list    # Should show policy-server
-/mcp               # Check status within Claude Code
-```
-
-### Option 2: Manual Configuration
-
-For MCP clients that don't support CLI installation (or if you prefer editing config files directly).
-
-#### Edit .mcp.json in Your Project Root
+Create a `.mcp.json` file at the root of your project (the directory containing your policies folder):
 
 **Linux/macOS:**
 ```json
@@ -72,7 +57,7 @@ For MCP clients that don't support CLI installation (or if you prefer editing co
       "command": "npx",
       "args": ["-y", "@andrebremer/mcp-policy-server"],
       "env": {
-        "MCP_POLICY_CONFIG": "/home/username/my-project/policies/policies.json"
+        "MCP_POLICY_CONFIG": "policies/policies.json"
       }
     }
   }
@@ -84,23 +69,44 @@ For MCP clients that don't support CLI installation (or if you prefer editing co
 {
   "mcpServers": {
     "policy-server": {
-      "command": "npx",
-      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
       "env": {
-        "MCP_POLICY_CONFIG": "C:/my-project/policies/policies.json"
+        "MCP_POLICY_CONFIG": "policies/policies.json"
       }
     }
   }
 }
 ```
 
+**Configuration Notes:**
+- `MCP_POLICY_CONFIG`: Path relative to the `.mcp.json` file location
+- Windows: Use forward slashes in paths (JSON compatible)
+- The `npx -y` command auto-installs the package on first use
+- Restart Claude Code after creating/modifying `.mcp.json`
+
 #### For Other MCP Clients
 
 Consult your client's documentation for MCP server configuration. Use the same configuration format as shown above (adapt paths for your OS).
 
-### Option 3: Development Installation
+### Verify Installation
 
-For development or local testing:
+After installing with Option 1 (CLI) or Option 2 (Manual):
+
+1. Restart Claude Code
+2. Run `/mcp` to check server status
+3. Look for "policy-server" with "connected" status
+
+**Troubleshooting:**
+- "failed" status: Check that `MCP_POLICY_CONFIG` path is correct
+- Server not listed: Verify `.mcp.json` syntax (use a JSON validator)
+- Connection errors: Check Node.js is installed (`node --version`)
+
+### Option 3: Development Installation (Local Project Files)
+
+For development, local testing, or when you want to modify the server code:
+
+#### Step 1: Clone and Build
 
 ```bash
 git clone https://github.com/AndreBremer/mcp-policy-server.git
@@ -109,7 +115,9 @@ npm install
 npm run build
 ```
 
-#### Add to MCP Configuration
+#### Step 2: Create .mcp.json in Your Project Root
+
+Create `.mcp.json` at the root of your project (where your policies directory is located):
 
 **Linux/macOS:**
 ```json
@@ -117,9 +125,9 @@ npm run build
   "mcpServers": {
     "policy-server": {
       "command": "node",
-      "args": ["/home/username/mcp-policy-server/dist/index.js"],
+      "args": ["/absolute/path/to/mcp-policy-server/dist/index.js"],
       "env": {
-        "MCP_POLICY_CONFIG": "/home/username/my-project/policies/policies.json"
+        "MCP_POLICY_CONFIG": "policies/policies.json"
       }
     }
   }
@@ -132,9 +140,9 @@ npm run build
   "mcpServers": {
     "policy-server": {
       "command": "node",
-      "args": ["C:/projects/mcp-policy-server/dist/index.js"],
+      "args": ["/absolute/path/to/mcp-policy-server/dist/index.js"],
       "env": {
-        "MCP_POLICY_CONFIG": "C:/my-project/policies/policies.json"
+        "MCP_POLICY_CONFIG": "policies/policies.json"
       }
     }
   }
@@ -142,8 +150,11 @@ npm run build
 ```
 
 **Important:**
-- Use absolute paths
+- `args`: Use absolute path to the server's `dist/index.js` file
+- `MCP_POLICY_CONFIG`: Can be relative to your project root
+- Windows: Use forward slashes or escaped backslashes in JSON
 - Point to `dist/index.js` (compiled), not `src/index.ts`
+- Run `npm run build` after making changes to the server code
 
 ## Next Steps
 
