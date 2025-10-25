@@ -280,6 +280,108 @@ See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and 
 - No server restart needed
 - Clear agent context/start new conversation if needed
 
+## Tips & Tricks
+
+### Let Claude Code Build Policy Files for You
+
+Instead of manually writing policy files, use Claude Code to generate them based on your requirements:
+
+```
+Review the codebase and create a policy file for our established database patterns
+at policies/policy-database.md. Use the § notation format from @docs/POLICY_REFERENCE.md. 
+
+Include sections for:
+- Connection pooling
+- Query optimization
+- Migration procedures
+- Backup requirements
+```
+
+Claude Code will read the POLICY_REFERENCE.md, understand the § notation format, and generate a properly structured policy file with correct section markers.
+
+### Maintain Policy References with MCP Tools
+
+Create a maintenance agent that uses the server's reference tools to keep your agents up to date:
+
+**.claude/agents/policy-maintainer.md:**
+```markdown
+---
+name: policy-maintainer
+description: Maintains and validates policy references in agent files
+tools: mcp__policy-server__extract_references, mcp__policy-server__validate_references, Read, Edit, Glob
+model: inherit
+---
+
+You maintain policy references across agent files.
+
+## Process
+
+When asked to audit or update agent policy references:
+
+1. **Find agent files** using Glob tool (`**/.claude/agents/*.md`)
+
+2. **Extract references** from each agent using `extract_references` tool
+   - Returns array of § references found in the file
+
+3. **Validate references** using `validate_references` tool
+   - Checks if sections exist in policy files
+   - Reports invalid or missing sections
+
+4. **Update agents** with corrections:
+   - Fix invalid references
+   - Add missing required sections
+   - Remove deprecated sections
+
+5. **Report changes** with specific file:line references
+
+## Common Tasks
+
+**Audit all agents:**
+- Extract references from all agent files
+- Validate each reference
+- Report invalid or outdated references
+
+**Update agent references:**
+- When policies change, update affected agents
+- Ensure agents reference current section numbers
+- Add new policy sections as needed
+```
+
+**Example usage:**
+```
+@agent-policy-maintainer audit all agents and report any invalid policy references
+```
+
+This agent will:
+- Scan all agent files for § references
+- Validate each reference against your policy files
+- Report which agents need updates
+- Suggest corrections
+
+**Batch update example:**
+```
+@agent-policy-maintainer we renamed §CODE.5 to §CODE.6, update all agents
+```
+
+### Combine Tools for Workflow Automation
+
+Use the MCP tools together for powerful workflows:
+
+**Find all files referencing a section:**
+```
+Use extract_references to find all agents that reference §API.1
+```
+
+**Validate before deployment:**
+```
+Use validate_references to check all § references in @.claude/agents/security-reviewer.md
+```
+
+**Discover policy dependencies:**
+```
+Use fetch_policies for §CODE.2 and show me what other sections it references
+```
+
 ## Next Steps
 
 - **Add more policies**: Create additional policy files for different domains

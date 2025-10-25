@@ -1,12 +1,12 @@
 # Policy Reference
 
-Complete reference for § notation syntax and policy file structure.
+Reference for § notation syntax and policy file structure.
 
-**Note:** Throughout this reference, examples use prefixes like DOC, API, CODE, and GUIDE. These are user-defined prefixes you configure in policies.json. You can choose any prefix naming scheme that fits your team's organizational structure.
+**Note:** Examples use DOC, API, CODE, and GUIDE prefixes. These are user-defined prefixes configured in policies.json. Choose any naming scheme that fits your organizational structure.
 
 ## Overview
 
-The § (section sign) notation provides a compact, unambiguous way to reference specific sections of policy documentation. The system supports single sections, subsections, ranges, and hyphenated prefix extensions.
+The § (section sign) notation references specific policy documentation sections. Supports single sections, subsections, ranges, and hyphenated prefix extensions.
 
 ## Format
 
@@ -24,125 +24,71 @@ The § (section sign) notation provides a compact, unambiguous way to reference 
 
 ### Format Rules
 
-1. **§ symbol required** - All references must start with §
+1. **§ symbol required** - All references start with §
 2. **PREFIX uppercase** - Must match configuration (DOC not doc)
 3. **Section numbers numeric** - No letters or special characters
-4. **Dot separators** - Subsections separated by dots
+4. **Dot separators** - Separate subsections with dots
 5. **Hyphen for ranges** - Single hyphen between start and end
 
 ## Single Sections
 
-### Top-Level Sections
+### Section Levels
 
-**Format:** `§PREFIX.N`
-
-**Examples:**
-- `§DOC.1` - Section 1 of documentation policy
-- `§API.5` - Section 5 of API policy
-- `§GUIDE.12` - Section 12 of guide policy
-
-**Markdown format:**
+**Top-level (§PREFIX.N):**
 ```markdown
 ## {§DOC.1}
-Section content here...
+Section content...
 ```
 
-### Subsections
-
-**Format:** `§PREFIX.N.N`
-
-**Examples:**
-- `§DOC.4.1` - Subsection 1 of section 4
-- `§API.2.3` - Subsection 3 of section 2
-- `§GUIDE.1.5` - Subsection 5 of section 1
-
-**Markdown format:**
+**Subsections (§PREFIX.N.N):**
 ```markdown
 ### {§DOC.4.1}
-Subsection content here...
+Subsection content...
 ```
 
-### Deep Subsections
-
-**Format:** `§PREFIX.N.N.N`
-
-**Examples:**
-- `§DOC.4.1.2` - Sub-subsection 2 of subsection 1 of section 4
-- `§API.1.2.3` - Three levels deep
-- `§GUIDE.5.1.1` - Three levels deep
-
-**Markdown format:**
+**Deep subsections (§PREFIX.N.N.N):**
 ```markdown
 #### {§DOC.4.1.2}
-Deep subsection content here...
+Deep subsection content...
 ```
+
+**Examples:**
+- `§DOC.1` - Top-level section
+- `§DOC.4.1` - Subsection
+- `§DOC.4.1.2` - Deep subsection
 
 ## Range Notation
 
-### Subsection Ranges
+Ranges expand to all sections between start and end (inclusive).
 
-**Format:** `§PREFIX.N.N-N`
+**Subsection ranges (§PREFIX.N.N-N):**
+```
+§DOC.4.1-3 expands to §DOC.4.1, §DOC.4.2, §DOC.4.3
+§API.2.5-8 expands to §API.2.5, §API.2.6, §API.2.7, §API.2.8
+```
 
-Expands to all subsections between start and end (inclusive).
-
-**Examples:**
-
-`§DOC.4.1-3` expands to:
-- §DOC.4.1
-- §DOC.4.2
-- §DOC.4.3
-
-`§API.2.5-8` expands to:
-- §API.2.5
-- §API.2.6
-- §API.2.7
-- §API.2.8
-
-**Use cases:**
-- Fetching related subsections
-- Referencing policy sequences
-- Compact notation for multiple sections
-
-### Section Ranges
-
-**Format:** `§PREFIX.N-N`
-
-Expands to all top-level sections between start and end (inclusive).
-
-**Examples:**
-
-`§DOC.2-4` expands to:
-- §DOC.2
-- §DOC.3
-- §DOC.4
-
-`§GUIDE.1-5` expands to:
-- §GUIDE.1
-- §GUIDE.2
-- §GUIDE.3
-- §GUIDE.4
-- §GUIDE.5
-
-**Use cases:**
-- Fetching entire policy chapters
-- Reviewing related sections
-- Batch validation
+**Section ranges (§PREFIX.N-N):**
+```
+§DOC.2-4 expands to §DOC.2, §DOC.3, §DOC.4
+§GUIDE.1-5 expands to §GUIDE.1, §GUIDE.2, §GUIDE.3, §GUIDE.4, §GUIDE.5
+```
 
 ### Range Rules
 
 1. **Start < End** - Range start must be less than range end
-2. **Same level** - Start and end must be at same depth (both sections or both subsections)
-3. **Same parent** - Subsection ranges must share same parent section
-4. **Inclusive** - Both start and end are included in expansion
+2. **Same level** - Start and end at same depth
+3. **Same parent** - Subsection ranges share same parent
+4. **Inclusive** - Both start and end included
 
-### Invalid Ranges
+**Valid ranges:**
+- `§DOC.1-3` - Section range
+- `§DOC.4.1-3` - Subsection range with same parent
 
-- `§DOC.1-3.2` - Wrong depth (mixing section and subsection)
-- `§DOC.4.1-5` - Wrong depth (end is section, start is subsection)
+**Invalid ranges:**
+- `§DOC.1-3.2` - Mixed depth
+- `§DOC.4.1-5` - Different depth levels
 - `§DOC.4.1-5.3` - Different parents
 - `§DOC.5-2` - Backwards (start > end)
-
-Valid: `§DOC.1-3` (section range), `§DOC.4.1-3` (subsection range with same parent)
 
 ## Hyphenated Prefixes
 
@@ -158,142 +104,83 @@ Valid: `§DOC.1-3` (section range), `§DOC.4.1-3` (subsection range with same pa
 - `EXTENSION` - Extension identifier (GUIDE, REST, CORE)
 - `.N` - Section numbers
 
-### Base Prefix Extraction and File Namespace Merging
+### Resolution Process
 
-The server automatically extracts the base prefix and searches across all matching files:
+The server extracts the base prefix and searches all matching files:
 
-1. Split on first hyphen to extract base prefix (e.g., `APP-HOOK` → `APP`)
-2. Look up base prefix in configuration to find stem (e.g., `APP` → `policy-application`)
-3. Discover all files matching `{stem}.md` and `{stem}-*.md` patterns
-4. Search across all discovered files for the section
-5. All files are merged into a single namespace for that prefix
+1. Split on first hyphen (`APP-HOOK` → `APP`)
+2. Find stem in configuration (`APP` → `policy-application`)
+3. Search all files matching `{stem}.md` and `{stem}-*.md`
+4. All files merge into single namespace for that prefix
 
-**Important:** File names are for human organizational convenience only. They do not influence how extensions map to specific files. When you reference `§APP-HOOK.1`, the server searches across:
-- `policy-application.md` (base file)
-- `policy-application-hooks.md` (if exists)
-- `policy-application-*.md` (any other extensions)
-
-The section can be in any of these files - the hyphenated extension (`APP-HOOK`) is just a section identifier, not a file selector.
+**Important:** File names organize content for humans. Extensions are section identifiers, not file selectors. `§APP-HOOK.1` searches all `policy-application*.md` files.
 
 **Examples:**
-
-`§DOC-GUIDE.1` → Base `DOC` → Searches `policy-documentation.md`, `policy-documentation-*.md`
-`§API-REST.2` → Base `API` → Searches `policy-api.md`, `policy-api-*.md`
-`§GUIDE-QUICK.3` → Base `GUIDE` → Searches `policy-guide.md`, `policy-guide-*.md`
+```
+§DOC-GUIDE.1 → Searches policy-documentation.md, policy-documentation-*.md
+§API-REST.2 → Searches policy-api.md, policy-api-*.md
+§GUIDE-QUICK.3 → Searches policy-guide.md, policy-guide-*.md
+```
 
 ### Extension Examples
 
-**Documentation variants:**
-- `§DOC.1` - Main documentation section
-- `§DOC-GUIDE.1` - Guide subsection
-- `§DOC-API.1` - API reference
-- `§DOC-REF.1` - Reference material
-
-**API variants:**
-- `§API.1` - General API section
-- `§API-REST.1` - REST API specifics
-- `§API-GRAPHQL.1` - GraphQL API specifics
-- `§API-AUTH.1` - Authentication details
-
-**System variants:**
-- `§SYS.1` - Core system section
-- `§SYS-CORE.1` - Core functionality
-- `§SYS-UTIL.1` - Utility functions
-- `§SYS-TEST.1` - Testing guidelines
-
-### Use Cases
-
-**Organizing large policy files:**
+**Organizing by concern:**
 ```markdown
 ## {§DOC.1} Overview
-Main documentation overview...
-
 ## {§DOC-GUIDE.1} Quick Start
-Quick start guide...
-
 ## {§DOC-API.1} API Reference
-API reference documentation...
-```
 
-**Separating concerns:**
-```markdown
-## {§API.1} General
-General API guidelines...
-
+## {§API.1} General Guidelines
 ## {§API-REST.1} REST APIs
-REST-specific guidelines...
-
 ## {§API-GRAPHQL.1} GraphQL APIs
-GraphQL-specific guidelines...
+
+## {§SYS.1} Core System
+## {§SYS-UTIL.1} Utilities
+## {§SYS-TEST.1} Testing
 ```
 
-**Configuration-free extensions:**
-No need to add DOC-GUIDE, DOC-API, API-REST to `policies.json`. They resolve automatically via base prefix extraction, and sections are found by searching across all files matching the base prefix's stem pattern.
+**Note:** No need to add extensions to `policies.json`. They resolve automatically via base prefix extraction.
 
 ## Embedded References
 
 ### Automatic Resolution
 
-The server automatically resolves § references embedded in section content:
+The server resolves § references embedded in section content.
 
-**Example policy file:**
+**Example:**
 ```markdown
 ## {§DOC.1} Overview
-
 This section covers basic concepts. For details see §DOC.4.1 and §API.2.
-
-...content...
 ```
 
-**Fetch process:**
-1. User requests §DOC.1
-2. Server extracts §DOC.1 content
-3. Server finds embedded §DOC.4.1 and §API.2
-4. Server fetches those sections
-5. Server returns all three sections combined
+Fetching §DOC.1 returns all three sections (§DOC.1, §DOC.4.1, §API.2).
 
 ### Recursive Resolution
 
-Resolution continues recursively:
+Resolution continues until no references remain.
 
 **Example chain:**
 ```markdown
-## {§DOC.1}
-See §DOC.2 for details...
-
-## {§DOC.2}
-Refer to §DOC.3 for examples...
-
-## {§DOC.3}
-Check §API.1 for implementation...
-
-## {§API.1}
-Final section with no references...
+## {§DOC.1} See §DOC.2 for details...
+## {§DOC.2} Refer to §DOC.3 for examples...
+## {§DOC.3} Check §API.1 for implementation...
+## {§API.1} Final section with no references...
 ```
 
-**Fetch §DOC.1:**
-1. Extracts §DOC.1 → finds §DOC.2
-2. Extracts §DOC.2 → finds §DOC.3
-3. Extracts §DOC.3 → finds §API.1
-4. Extracts §API.1 → no more references
-5. Returns all four sections
+Fetching §DOC.1 returns all four sections.
 
 ### Deduplication
 
-The server removes duplicate sections:
+The server removes duplicates:
 
-**Parent-child deduplication:**
-- Requesting §DOC.4 automatically includes §DOC.4.1, §DOC.4.2, etc.
-- If §DOC.4.1 is also referenced, it's not fetched twice
-
-**Explicit deduplication:**
-- If §DOC.1 is referenced multiple times, only fetched once
+- Parent sections include children (§DOC.4 includes §DOC.4.1, §DOC.4.2)
+- Multiple references to same section fetched once
 
 ## Parent-Child Relationships
 
 ### Hierarchical Structure
 
-Sections have implicit hierarchical relationships:
+Sections form implicit hierarchies:
 
 ```
 §DOC.4
@@ -304,14 +191,12 @@ Sections have implicit hierarchical relationships:
   └─ §DOC.4.3
 ```
 
-### Parent Includes Children
-
-Fetching a parent section returns all child content. For example, `§DOC.4` returns §DOC.4 plus all nested subsections (§DOC.4.1, §DOC.4.2, §DOC.4.2.1, etc.).
+Fetching §DOC.4 returns all child content (§DOC.4.1, §DOC.4.2, §DOC.4.2.1, etc.).
 
 ### Stopping Rules
 
 **Whole sections (§PREFIX.N):**
-- Stop at next whole section (§PREFIX.N+1)
+- Stop at next whole section
 - Stop at {§END} marker
 - Stop at end of file
 
@@ -320,10 +205,7 @@ Fetching a parent section returns all child content. For example, `§DOC.4` retu
 - Stop at {§END} marker
 - Stop at end of file
 
-### End Markers
-
-Use `{§END}` to explicitly terminate sections:
-
+**End marker example:**
 ```markdown
 ## {§DOC.4} Section
 Section content...
@@ -338,69 +220,34 @@ This content is not part of §DOC.4.1 or §DOC.4
 
 ## Section Sorting
 
-### Sorting Order
-
-Sections are sorted by:
-1. Prefix alphabetically using `localeCompare()` (APP before META before SYS)
+Sections sort by:
+1. Prefix alphabetically (APP before META before SYS)
 2. Section numbers numerically (§DOC.2 before §DOC.10)
-3. Subsections follow parent (§DOC.2 before §DOC.2.1, and §DOC.2.1 before §DOC.3)
+3. Subsections follow parent (§DOC.2 before §DOC.2.1 before §DOC.3)
 
 **Example order:**
 ```
-§API.1
-§API.2
-§API.2.1
-§API.2.2
-§API.10
-§APP.1
-§APP.4
-§APP.4.1
-§APP.4.2
-§APP-HOOK.1
-§DOC.1
-§DOC.2
+§API.1, §API.2, §API.2.1, §API.2.2, §API.10
+§APP.1, §APP.4, §APP.4.1, §APP.4.2, §APP-HOOK.1
+§DOC.1, §DOC.2
 §META.1
 §SYS.1
 ```
 
-### Response Ordering
-
-Fetch responses return sections in sorted order (alphabetically by prefix, then numerically by section):
-
-**Request:** `["§DOC.4", "§API.1", "§DOC.2"]`
-
-**Response order:**
+**Fetch responses return sorted sections:**
 ```
-§API.1
----
-§DOC.2
----
-§DOC.4
-```
+Request: ["§DOC.4", "§API.1", "§DOC.2"]
+Response: §API.1, §DOC.2, §DOC.4
 
-**Request with mixed prefixes:** `["§SYS.5", "§APP.7", "§META.1"]`
-
-**Response order:**
-```
-§APP.7
----
-§META.1
----
-§SYS.5
+Request: ["§SYS.5", "§APP.7", "§META.1"]
+Response: §APP.7, §META.1, §SYS.5
 ```
 
 ## Validation
 
-### Reference Validation
+The `validate_references` tool checks format, prefix existence, section existence, and uniqueness.
 
-The `validate_references` tool checks:
-
-1. **Format validity** - Correct § notation
-2. **Prefix existence** - Prefix defined in configuration
-3. **Section existence** - Section exists in policy file
-4. **Uniqueness** - Section ID not duplicated
-
-**Example valid:**
+**Valid response:**
 ```json
 {
   "valid": true,
@@ -408,196 +255,86 @@ The `validate_references` tool checks:
 }
 ```
 
-**Example invalid:**
+**Invalid response:**
 ```json
 {
   "valid": false,
   "checked": 3,
   "invalid": ["§DOC.999"],
-  "details": [
-    "§DOC.999: Section not found in policy-documentation.md"
-  ]
+  "details": ["§DOC.999: Section not found in policy-documentation.md"]
 }
 ```
 
-### Common Validation Errors
+### Common Errors
 
-**Missing § symbol:**
-```
-DOC.1  ❌  Missing § symbol
-§DOC.1 ✓  Correct format
-```
-
-**Lowercase prefix:**
-```
-§doc.1 ❌  Prefix must be uppercase
-§DOC.1 ✓  Correct format
-```
-
-**Invalid characters:**
-```
-§DOC.1a   ❌  Letters not allowed in section numbers
-§DOC.1.a  ❌  Letters not allowed in section numbers
-§DOC.1    ✓  Correct format
-```
-
-**Missing prefix mapping:**
-```
-§UNKNOWN.1 ❌  Prefix not in policies.json
-§DOC.1     ✓  Prefix configured
-```
+| Error | Example | Correct |
+|-------|---------|---------|
+| Missing § symbol | `DOC.1` | `§DOC.1` |
+| Lowercase prefix | `§doc.1` | `§DOC.1` |
+| Invalid characters | `§DOC.1a` | `§DOC.1` |
+| Missing prefix | `§UNKNOWN.1` | `§DOC.1` |
 
 ## Examples
 
-### Basic Usage
-
-**Single section:**
-```
-§DOC.7
-```
-
-**Multiple sections:**
-```
-§DOC.7, §API.5, §GUIDE.1
-```
-
-**Range:**
-```
-§DOC.4.1-3
-```
-
 ### In Markdown
 
-**Reference in text:**
 ```markdown
 For API guidelines, see §API.1 and §API.2.
-```
 
-**Section header:**
-```markdown
 ## {§DOC.4} Configuration
-
 This section covers configuration...
-```
 
-**List of references:**
-```markdown
 Related sections:
 - §DOC.1 - Overview
 - §DOC.2 - Installation
 - §DOC.3 - Configuration
+
+See §DOC.4.1-3 for configuration options.
 ```
 
 ### In JSON
 
-**Fetch request:**
 ```json
-{
-  "sections": ["§DOC.7", "§API.5"]
-}
-```
-
-**Range request:**
-```json
-{
-  "sections": ["§DOC.4.1-3"]
-}
-```
-
-**Validation request:**
-```json
-{
-  "references": ["§DOC.1", "§API.2", "§GUIDE.5"]
-}
+{"sections": ["§DOC.7", "§API.5"]}
+{"sections": ["§DOC.4.1-3"]}
+{"references": ["§DOC.1", "§API.2", "§GUIDE.5"]}
 ```
 
 ## Best Practices
 
-### Naming Sections
+### Descriptive Headers
 
-**Use descriptive headers:**
+Use clear, specific section names:
 ```markdown
-## {§DOC.1} Overview
-## {§DOC.2} Installation
-## {§DOC.3} Configuration
+## {§DOC.1} Overview        ✓
+## {§DOC.1} Section 1       ❌
 ```
 
-**Avoid generic headers:**
-```markdown
-## {§DOC.1} Section 1  ❌
-## {§DOC.1} Overview   ✓
-```
+### Logical Hierarchy
 
-### Organizing Content
-
-**Logical hierarchy:**
+Group related content under parent sections:
 ```markdown
 ## {§DOC.4} Configuration
-
 ### {§DOC.4.1} File Configuration
 ### {§DOC.4.2} Environment Variables
 ### {§DOC.4.3} Command Line Options
 ```
 
-**Group related content:**
-```markdown
-## {§API.1} REST APIs
-## {§API.2} Authentication
-## {§API.3} Rate Limiting
+### Compact References
+
+Use ranges and parents to avoid duplication:
+```
+§DOC.2-5    ✓ Compact
+§DOC.2, §DOC.3, §DOC.4, §DOC.5    ❌ Verbose
+
+§DOC.4    ✓ Includes all subsections
+§DOC.4.1, §DOC.4.2, §DOC.4.3    ❌ Redundant
 ```
 
-### Reference Style
+### Sequential Numbering
 
-**Inline references:**
-```markdown
-For details on authentication (§API.2), see the security guide (§SEC.1).
+Number sections sequentially without gaps:
 ```
-
-**Explicit lists:**
-```markdown
-Prerequisites:
-- §DOC.1 - Overview
-- §DOC.2 - Installation
-```
-
-**Range notation:**
-```markdown
-See §DOC.4.1-3 for configuration options.
-```
-
-### Avoiding Duplication
-
-**Use ranges:**
-```
-§DOC.2-5           ✓  Compact
-§DOC.2, §DOC.3, §DOC.4, §DOC.5  ❌  Verbose
-```
-
-**Use parent sections:**
-```
-§DOC.4             ✓  Includes all subsections
-§DOC.4.1, §DOC.4.2, §DOC.4.3  ❌  Redundant
-```
-
-### Section Numbering
-
-**Sequential numbering:**
-```
-§DOC.1
-§DOC.2
-§DOC.3
-```
-
-**Avoid gaps:**
-```
-§DOC.1
-§DOC.5   ❌  Gap in numbering
-§DOC.10  ❌  Another gap
-```
-
-**Consistent subsection numbering:**
-```
-§DOC.4.1
-§DOC.4.2
-§DOC.4.3
+§DOC.1, §DOC.2, §DOC.3    ✓
+§DOC.1, §DOC.5, §DOC.10    ❌ Gaps in numbering
 ```
