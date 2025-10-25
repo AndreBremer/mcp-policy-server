@@ -49,7 +49,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   return {
     tools: [
       {
-        name: 'fetch',
+        name: 'fetch_policies',
         description:
           'Fetch one or more policy sections with automatic recursive § reference resolution. Supports range notation (§APP.4.1-3) and multiple mixed sections (§APP.7,§SYS.5,§META.1). Automatically chunks large responses to stay within token limits.',
         inputSchema: {
@@ -152,7 +152,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToo
 
   try {
     switch (name) {
-      case 'fetch':
+      case 'fetch_policies':
         return handleFetch(args, CONFIG);
 
       case 'resolve_references':
@@ -220,7 +220,7 @@ server.setRequestHandler(GetPromptRequestSchema, async (request) => {
             type: 'text',
             text: `# Policy Documentation Auto-Fetch
 
-When you encounter § references in agent instructions or system files, automatically fetch the referenced sections using the fetch tool.
+When you encounter § references in agent instructions or system files, automatically fetch the referenced sections using the fetch_policies tool.
 
 ## Section Notation
 

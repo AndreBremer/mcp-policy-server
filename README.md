@@ -36,24 +36,22 @@ Reference policy sections with compact notation like `§API.7` or `§DEPLOY.3.1-
 
 **Agent file (`.claude/agents/code-reviewer.md`):**
 ```markdown
+---
+name: code-reviewer
+description: Reviews code changes for compliance with policy standards
+tools: mcp__policy-server__fetch_policies, Read, Glob
+model: inherit
+---
+
 You are a code reviewer following our team standards.
 
-**Before reviewing code:**
-1. Fetch relevant standards using MCP tool `fetch`
-2. Apply standards to your review
-
-**Standards to reference:**
-- §API.7 - REST API design principles
-- §CODE.3 - Error handling patterns
-- §TEST.5 - Unit test requirements
-
-Use the MCP `fetch` tool to retrieve these sections before reviewing.
+**Before reviewing code:** use fetch_policies to retrieve the relevant policies:
+- §API.7 - REST API Design Principles
 ```
 
 **Policy file (`policies/policy-api.md`):**
 ```markdown
-## {§API.7}
-### REST API Design Principles
+## {§API.7} - REST API Design Principles
 
 All endpoints follow RESTful conventions:
 - Use proper HTTP verbs (GET, POST, PUT, DELETE)
@@ -64,7 +62,7 @@ See also §CODE.3 for error handling implementation.
 ```
 
 **What happens:**
-When the agent calls MCP fetch with those sections, the server returns requested sections plus any embedded references (like §CODE.3 mentioned in §API.7). See [Getting Started Guide](docs/GETTING_STARTED.md#step-6-use-the-agent) for detailed workflow.
+When the agent calls MCP fetch_policies with those sections, the server returns requested sections plus any embedded references (like §CODE.3 mentioned in §API.7). See [Getting Started Guide](docs/GETTING_STARTED.md#step-6-use-the-agent) for detailed workflow.
 
 See [Policy Reference](docs/POLICY_REFERENCE.md) for complete § notation syntax.
 
@@ -81,7 +79,7 @@ See [Installation Guide](docs/INSTALLATION.md) to set up the server, then [Getti
 
 ## Available MCP Tools
 
-### `fetch` - Retrieve Policy Sections
+### `fetch_policies` - Retrieve Policy Sections
 Fetch one or more policy sections. Automatically resolves embedded § references.
 
 ```json

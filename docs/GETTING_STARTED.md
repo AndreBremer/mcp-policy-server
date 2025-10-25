@@ -97,13 +97,20 @@ Create an agent file that references your policies.
 
 **.claude/agents/code-reviewer.md:**
 ```markdown
+---
+name: code-reviewer
+description: Reviews code changes for compliance with policy standards
+tools: mcp__policy-server__fetch_policies, Read, Glob
+model: inherit
+---
+
 You are a code reviewer ensuring adherence to team standards.
 
 ## Process
 
 When reviewing code:
 
-1. **Fetch relevant standards** using the MCP `fetch` tool:
+1. **Fetch relevant standards** using the MCP `fetch_policies` tool:
    - §CODE.1 - General principles
    - §CODE.2 - Error handling
    - §CODE.3 - Testing requirements
@@ -115,15 +122,6 @@ When reviewing code:
    - **Strengths**: What's done well
    - **Issues**: Specific violations with section references
    - **Recommendations**: How to fix with code examples
-
-## Standards References
-
-Before each review, fetch these sections:
-- §CODE.1 (general principles)
-- §CODE.2 (error handling)
-- §CODE.3 (testing requirements)
-
-The fetch tool will automatically retrieve any sections referenced within these (like §CODE.5 logging standards referenced from §CODE.2).
 
 ## Review Criteria
 
@@ -140,15 +138,13 @@ Cite specific policy sections (§CODE.N) when noting violations.
 Invoke your code review agent with a code sample:
 
 ```
-@code-reviewer please review this function:
-
-[paste code here]
+@agent-code-reviewer review @path/to/code-file.js:
 ```
 
 **What happens:**
 1. Agent reads its instructions
 2. Agent sees references to §CODE.1, §CODE.2, §CODE.3
-3. Agent calls MCP `fetch` tool with those sections
+3. Agent calls MCP `fetch_policies` tool with those sections
 4. Server returns requested sections PLUS §CODE.5 (referenced from §CODE.2)
 5. Agent reviews code against current standards
 6. Agent provides feedback with specific policy citations
@@ -270,7 +266,7 @@ See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and 
 **Symptom:** Agent responds without consulting policies
 
 **Solution:**
-- Make agent instructions explicit: "Use the MCP fetch tool to retrieve §CODE.1"
+- Make agent instructions explicit: "Use the MCP fetch_policies tool to retrieve §CODE.1"
 - List specific sections to fetch
 - Include clear process steps (1. Fetch policies, 2. Apply to task)
 

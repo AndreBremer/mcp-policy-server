@@ -475,13 +475,15 @@ describe('parser', () => {
     });
 
     it('should handle multiple code blocks with references between them', () => {
-      const content = '§APP.7 first, `§META.1` ignored, §SYS.2 found, ```§USER.3``` ignored, §APP.8 last';
+      const content =
+        '§APP.7 first, `§META.1` ignored, §SYS.2 found, ```§USER.3``` ignored, §APP.8 last';
       const refs = findEmbeddedReferences(content);
       expect(refs).toEqual(['§APP.7', '§SYS.2', '§APP.8']);
     });
 
     it('should handle mismatched fence lengths correctly', () => {
-      const content = '````\n§APP.7 inside 4-tick fence\n```\nThis closes with only 3 ticks but fence needs 4+';
+      const content =
+        '````\n§APP.7 inside 4-tick fence\n```\nThis closes with only 3 ticks but fence needs 4+';
       const refs = findEmbeddedReferences(content);
       // With proper fence matching, §APP.7 should be excluded
       expect(refs).toEqual([]);
