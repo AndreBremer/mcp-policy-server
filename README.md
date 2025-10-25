@@ -1,4 +1,4 @@
-# Policy Documentation Server
+# MCP Policy Server
 
 **Give your AI agents instant, token-efficient access to your team's standards, guidelines, and best practices.**
 
