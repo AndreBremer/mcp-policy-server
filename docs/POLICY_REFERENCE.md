@@ -338,3 +338,58 @@ Number sections sequentially without gaps:
 §DOC.1, §DOC.2, §DOC.3    ✓
 §DOC.1, §DOC.5, §DOC.10    ❌ Gaps in numbering
 ```
+
+## Documentation with Examples
+
+### Code Blocks
+
+Section markers in code blocks are preserved in extracted content but ignored during validation:
+
+```markdown
+## {§DOC.5} API Examples
+
+Here's an example section header format:
+
+\```markdown
+## {§EXAMPLE.1} Example Section
+Content goes here...
+\```
+
+Use inline code for references: `{§INLINE.1}`
+```
+
+**Validation behavior:**
+- Only `§DOC.5` is detected as a real section
+- `§EXAMPLE.1` and `§INLINE.1` are ignored (they're in code blocks)
+
+**Extraction behavior:**
+- All content is preserved including code blocks
+- Example markers remain in the extracted section
+- Agents see the full documentation with examples
+
+### Table of Contents
+
+TOC links are ignored during validation:
+
+```markdown
+## {§DOC.TOC} Table of Contents
+
+- [[#{§DOC.1} Overview]]
+- [[#{§DOC.2} Installation]]
+- [[#{§DOC.3} Configuration]]
+
+## {§DOC.1} Overview
+Actual section content...
+```
+
+**Validation behavior:**
+- Only actual section headers (`## {§DOC.1}`) are validated
+- TOC references (`[[#{§DOC.1} ...]]`) are ignored
+
+This allows policy files to include:
+- Example section formats in code blocks
+- References in inline code for demonstration
+- Table of contents with section links
+- YAML/JSON examples containing section markers
+
+All examples are preserved in extracted content but don't trigger duplicate section warnings.

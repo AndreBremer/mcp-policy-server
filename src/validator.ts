@@ -15,6 +15,14 @@ import { ValidationResult, SectionNotation } from './types.js';
  * and returns array of section IDs with § prefix. Used during validation
  * to identify duplicate sections across policy files.
  *
+ * Excludes section markers inside code blocks (backticks and fenced blocks)
+ * to avoid false positives from example code in documentation. Also excludes
+ * TOC references (wiki-link format) by only matching section markers that
+ * appear in actual markdown headers (## or ###).
+ *
+ * **Important:** This filtering only applies to validation. Section extraction
+ * (parser.extractSection) preserves all content including code blocks.
+ *
  * @param filePath - Absolute path to policy file
  * @returns Array of section IDs (e.g., ["§META.1", "§META.2"])
  *
@@ -22,15 +30,36 @@ import { ValidationResult, SectionNotation } from './types.js';
  * ```typescript
  * const sections = extractSectionIDs('/path/to/policy-meta.md');
  * // Returns: ['§META.1', '§META.2', '§META.3']
+ * // (Ignores examples in code blocks and TOC links)
  * ```
  */
 export function extractSectionIDs(filePath: string): SectionNotation[] {
   const content = fs.readFileSync(filePath, 'utf8');
-  const sectionPattern = /\{§([A-Z]+(?:-[A-Z]+)*)\.(\d+(?:\.\d+)*)\}/g;
+
+  // Remove all code blocks (inline and fenced) before scanning for section markers
+  // This prevents section markers in example code from being treated as real sections
+  let cleanedContent = content;
+
+  // Remove fenced code blocks with proper fence length matching
+  // Must match closing fence with same or more backticks as opening fence
+  // Process from longest to shortest to handle nested fences correctly
+  for (let tickCount = 10; tickCount >= 3; tickCount--) {
+    const ticks = '`'.repeat(tickCount);
+    const fencePattern = new RegExp(`${ticks}[\\s\\S]*?${ticks}`, 'g');
+    cleanedContent = cleanedContent.replace(fencePattern, '');
+  }
+
+  // Remove inline code blocks (`...`)
+  cleanedContent = cleanedContent.replace(/`[^`]*`/g, '');
+
+  // Match section markers that appear in markdown headers (## or ###)
+  // This ensures we only find actual section definitions, not TOC references
+  // Pattern: Line starts with ##/###, followed by {§PREFIX.N}, then optional title
+  const headerPattern = /^##+ \{§([A-Z]+(?:-[A-Z]+)*)\.(\d+(?:\.\d+)*)\}/gm;
   const ids: SectionNotation[] = [];
   let match: RegExpExecArray | null;
 
-  while ((match = sectionPattern.exec(content)) !== null) {
+  while ((match = headerPattern.exec(cleanedContent)) !== null) {
     ids.push(`§${match[1]}.${match[2]}` as SectionNotation);
   }
 

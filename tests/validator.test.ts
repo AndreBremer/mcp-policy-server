@@ -111,6 +111,45 @@ describe('validator', () => {
       const nonExistentPath = path.join(FIXTURES_DIR, 'policy-does-not-exist.md');
       expect(() => extractSectionIDs(nonExistentPath)).toThrow();
     });
+
+    it('should ignore section markers in fenced code blocks', () => {
+      const EXAMPLES_POLICY = path.join(FIXTURES_DIR, 'policy-with-examples.md');
+      const sectionIDs = extractSectionIDs(EXAMPLES_POLICY);
+
+      // Should only find real sections (EX.1, EX.2, EX.3), not examples in code blocks
+      expect(sectionIDs).toEqual(['§EX.1', '§EX.2', '§EX.3']);
+      expect(sectionIDs).toHaveLength(3);
+
+      // Should NOT include EXAMPLE.1, EXAMPLE.2, YAML.1, YAML.2 from code blocks
+      expect(sectionIDs).not.toContain('§EXAMPLE.1');
+      expect(sectionIDs).not.toContain('§EXAMPLE.2');
+      expect(sectionIDs).not.toContain('§YAML.1');
+      expect(sectionIDs).not.toContain('§YAML.2');
+    });
+
+    it('should ignore section markers in inline code', () => {
+      const EXAMPLES_POLICY = path.join(FIXTURES_DIR, 'policy-with-examples.md');
+      const sectionIDs = extractSectionIDs(EXAMPLES_POLICY);
+
+      // Should NOT include INLINE.1 from inline code
+      expect(sectionIDs).not.toContain('§INLINE.1');
+    });
+
+    it('should ignore section markers in TOC links', () => {
+      const EXAMPLES_POLICY = path.join(FIXTURES_DIR, 'policy-with-examples.md');
+      const content = fs.readFileSync(EXAMPLES_POLICY, 'utf-8');
+
+      // Verify the file has TOC entries (sanity check)
+      expect(content).toContain('[[#{§EX.1}');
+      expect(content).toContain('[[#{§EX.2}');
+
+      // But extractSectionIDs should only count section headers, not TOC
+      const sectionIDs = extractSectionIDs(EXAMPLES_POLICY);
+
+      // Should have exactly 3 sections (one for each actual header)
+      // Not 6 (which would include TOC duplicates)
+      expect(sectionIDs).toHaveLength(3);
+    });
   });
 
   describe('validateSectionUniqueness', () => {

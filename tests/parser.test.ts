@@ -361,6 +361,40 @@ describe('parser', () => {
         expect(content).toContain('### {§META.2.1}');
       });
     });
+
+    describe('code block preservation', () => {
+      it('should preserve code blocks in extracted content', () => {
+        const EXAMPLES_POLICY = path.join(FIXTURES_DIR, 'policy-with-examples.md');
+        const content = extractSection(EXAMPLES_POLICY, 'EX', '2');
+
+        // Should include the section header
+        expect(content).toContain('## {§EX.2} Section Two');
+
+        // Should preserve fenced code blocks with example section markers
+        expect(content).toContain('```markdown');
+        expect(content).toContain('## {§EXAMPLE.1} Example Section');
+        expect(content).toContain('## {§EXAMPLE.2} Another Example');
+        expect(content).toContain('```');
+
+        // Should preserve inline code with section markers
+        expect(content).toContain('`{§INLINE.1}`');
+
+        // Should preserve YAML code block
+        expect(content).toContain('```yaml');
+        expect(content).toContain('{§YAML.1}');
+        expect(content).toContain('{§YAML.2}');
+      });
+
+      it('should preserve all content types in extracted section', () => {
+        const EXAMPLES_POLICY = path.join(FIXTURES_DIR, 'policy-with-examples.md');
+        const content = extractSection(EXAMPLES_POLICY, 'EX', '2');
+
+        // Verify extraction includes actual prose
+        expect(content).toContain('This section contains examples in code blocks');
+        expect(content).toContain('Here are some example section headers:');
+        expect(content).toContain('You can also show inline examples');
+      });
+    });
   });
 
   describe('findEmbeddedReferences', () => {
