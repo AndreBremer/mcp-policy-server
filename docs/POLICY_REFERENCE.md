@@ -158,20 +158,28 @@ Valid: `§DOC.1-3` (section range), `§DOC.4.1-3` (subsection range with same pa
 - `EXTENSION` - Extension identifier (GUIDE, REST, CORE)
 - `.N` - Section numbers
 
-### Base Prefix Extraction
+### Base Prefix Extraction and File Namespace Merging
 
-The server automatically extracts the base prefix:
+The server automatically extracts the base prefix and searches across all matching files:
 
-1. Split on first hyphen
-2. Extract base prefix (before hyphen)
-3. Look up base prefix in configuration
-4. Resolve to corresponding file
+1. Split on first hyphen to extract base prefix (e.g., `APP-HOOK` → `APP`)
+2. Look up base prefix in configuration to find stem (e.g., `APP` → `policy-application`)
+3. Discover all files matching `{stem}.md` and `{stem}-*.md` patterns
+4. Search across all discovered files for the section
+5. All files are merged into a single namespace for that prefix
+
+**Important:** File names are for human organizational convenience only. They do not influence how extensions map to specific files. When you reference `§APP-HOOK.1`, the server searches across:
+- `policy-application.md` (base file)
+- `policy-application-hooks.md` (if exists)
+- `policy-application-*.md` (any other extensions)
+
+The section can be in any of these files - the hyphenated extension (`APP-HOOK`) is just a section identifier, not a file selector.
 
 **Examples:**
 
-`§DOC-GUIDE.1` → Base prefix `DOC` → `policy-documentation.md`
-`§API-REST.2` → Base prefix `API` → `policy-api.md`
-`§GUIDE-QUICK.3` → Base prefix `GUIDE` → `policy-guide.md`
+`§DOC-GUIDE.1` → Base `DOC` → Searches `policy-documentation.md`, `policy-documentation-*.md`
+`§API-REST.2` → Base `API` → Searches `policy-api.md`, `policy-api-*.md`
+`§GUIDE-QUICK.3` → Base `GUIDE` → Searches `policy-guide.md`, `policy-guide-*.md`
 
 ### Extension Examples
 
@@ -220,7 +228,7 @@ GraphQL-specific guidelines...
 ```
 
 **Configuration-free extensions:**
-No need to add DOC-GUIDE, DOC-API, API-REST to `policies.json`. They resolve automatically via base prefix.
+No need to add DOC-GUIDE, DOC-API, API-REST to `policies.json`. They resolve automatically via base prefix extraction, and sections are found by searching across all files matching the base prefix's stem pattern.
 
 ## Embedded References
 
@@ -333,9 +341,9 @@ This content is not part of §DOC.4.1 or §DOC.4
 ### Sorting Order
 
 Sections are sorted by:
-1. Prefix alphabetically (API before DOC)
+1. Prefix alphabetically using `localeCompare()` (APP before META before SYS)
 2. Section numbers numerically (§DOC.2 before §DOC.10)
-3. Depth-first (§DOC.2 before §DOC.2.1)
+3. Subsections follow parent (§DOC.2 before §DOC.2.1, and §DOC.2.1 before §DOC.3)
 
 **Example order:**
 ```
@@ -344,17 +352,20 @@ Sections are sorted by:
 §API.2.1
 §API.2.2
 §API.10
+§APP.1
+§APP.4
+§APP.4.1
+§APP.4.2
+§APP-HOOK.1
 §DOC.1
 §DOC.2
-§DOC.4
-§DOC.4.1
-§DOC.4.2
-§GUIDE.1
+§META.1
+§SYS.1
 ```
 
 ### Response Ordering
 
-Fetch responses return sections in sorted order:
+Fetch responses return sections in sorted order (alphabetically by prefix, then numerically by section):
 
 **Request:** `["§DOC.4", "§API.1", "§DOC.2"]`
 
@@ -365,6 +376,17 @@ Fetch responses return sections in sorted order:
 §DOC.2
 ---
 §DOC.4
+```
+
+**Request with mixed prefixes:** `["§SYS.5", "§APP.7", "§META.1"]`
+
+**Response order:**
+```
+§APP.7
+---
+§META.1
+---
+§SYS.5
 ```
 
 ## Validation

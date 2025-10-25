@@ -25,9 +25,6 @@ import {
 import { loadConfig, validateConfiguration, ServerConfig } from './config.js';
 import { validateSectionUniqueness, formatDuplicateErrors } from './validator.js';
 
-// Global configuration
-let CONFIG: ServerConfig | null = null;
-
 // Create server instance
 const server = new Server(
   {
@@ -141,84 +138,66 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 /**
- * Handle tool calls
+ * Setup request handlers with configuration
+ *
+ * Creates closure over config to avoid global mutable state
  */
-server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
-  const { name, arguments: args } = request.params;
+function setupRequestHandlers(config: ServerConfig): void {
+  /**
+   * Handle tool calls
+   */
+  server.setRequestHandler(CallToolRequestSchema, async (request): Promise<CallToolResult> => {
+    const { name, arguments: args } = request.params;
 
-  if (!CONFIG) {
-    throw new Error('Server configuration not loaded');
-  }
+    try {
+      switch (name) {
+        case 'fetch_policies':
+          return handleFetch(args, config);
 
-  try {
-    switch (name) {
-      case 'fetch_policies':
-        return handleFetch(args, CONFIG);
+        case 'resolve_references':
+          return handleResolveReferences(args, config);
 
-      case 'resolve_references':
-        return handleResolveReferences(args, CONFIG);
+        case 'extract_references':
+          return handleExtractReferences(args, config);
 
-      case 'extract_references':
-        return handleExtractReferences(args, CONFIG);
+        case 'validate_references':
+          return handleValidateReferences(args, config);
 
-      case 'validate_references':
-        return handleValidateReferences(args, CONFIG);
+        case 'list_sources':
+          return handleListSources(args, config);
 
-      case 'list_sources':
-        return handleListSources(args, CONFIG);
+        case 'inspect_context':
+          return handleInspectContext(args, request);
 
-      case 'inspect_context':
-        return handleInspectContext(args, request);
-
-      default:
-        throw new Error(`Unknown tool: ${name}`);
+        default:
+          throw new Error(`Unknown tool: ${name}`);
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Tool execution failed: ${String(error)}`);
     }
-  } catch (error) {
-    if (error instanceof Error) {
-      throw error;
-    }
-    throw new Error(`Tool execution failed: ${String(error)}`);
-  }
-});
+  });
 
-/**
- * List available prompts
- */
-server.setRequestHandler(ListPromptsRequestSchema, async () => {
-  return {
-    prompts: [
-      {
-        name: 'auto-fetch',
-        description:
-          'Automatically fetch policy documentation sections when § references are encountered',
-        arguments: [],
-      },
-    ],
-  };
-});
+  /**
+   * Get prompt content
+   */
+  server.setRequestHandler(GetPromptRequestSchema, async (request) => {
+    const { name } = request.params;
 
-/**
- * Get prompt content
- */
-server.setRequestHandler(GetPromptRequestSchema, async (request) => {
-  const { name } = request.params;
+    if (name === 'auto-fetch') {
+      const prefixDocs = Object.entries(config.stems)
+        .map(([prefix, stem]) => `- **§${prefix}.N** - ${stem}.md Section N`)
+        .join('\n');
 
-  if (!CONFIG) {
-    throw new Error('Server configuration not loaded');
-  }
-
-  if (name === 'auto-fetch') {
-    const prefixDocs = Object.entries(CONFIG.stems)
-      .map(([prefix, stem]) => `- **§${prefix}.N** - ${stem}.md Section N`)
-      .join('\n');
-
-    return {
-      messages: [
-        {
-          role: 'user',
-          content: {
-            type: 'text',
-            text: `# Policy Documentation Auto-Fetch
+      return {
+        messages: [
+          {
+            role: 'user',
+            content: {
+              type: 'text',
+              text: `# Policy Documentation Auto-Fetch
 
 When you encounter § references in agent instructions or system files, automatically fetch the referenced sections using the fetch_policies tool.
 
@@ -243,13 +222,30 @@ ${prefixDocs}
 - Reference is purely informational (e.g., "documented in §APP.7" without needing details)
 
 This eliminates the need for explicit bash prefetch commands in agent files.`,
+            },
           },
-        },
-      ],
-    };
-  }
+        ],
+      };
+    }
 
-  throw new Error(`Unknown prompt: ${name}`);
+    throw new Error(`Unknown prompt: ${name}`);
+  });
+}
+
+/**
+ * List available prompts
+ */
+server.setRequestHandler(ListPromptsRequestSchema, async () => {
+  return {
+    prompts: [
+      {
+        name: 'auto-fetch',
+        description:
+          'Automatically fetch policy documentation sections when § references are encountered',
+        arguments: [],
+      },
+    ],
+  };
 });
 
 /**
@@ -258,15 +254,15 @@ This eliminates the need for explicit bash prefetch commands in agent files.`,
 async function main(): Promise<void> {
   try {
     // Load and validate configuration
-    CONFIG = loadConfig();
-    validateConfiguration(CONFIG);
+    const config = loadConfig();
+    validateConfiguration(config);
 
     console.error('Policy server configuration loaded:');
-    console.error(`  Base directory: ${CONFIG.baseDir}`);
-    console.error(`  Prefixes: ${Object.keys(CONFIG.stems).join(', ')}`);
+    console.error(`  Base directory: ${config.baseDir}`);
+    console.error(`  Prefixes: ${Object.keys(config.stems).join(', ')}`);
 
     // Validate section uniqueness at startup
-    const validationResult = validateSectionUniqueness(CONFIG, CONFIG.baseDir);
+    const validationResult = validateSectionUniqueness(config, config.baseDir);
 
     if (!validationResult.valid) {
       console.error('[WARN] Policy section validation failed:');
@@ -274,6 +270,9 @@ async function main(): Promise<void> {
     } else {
       console.error('Policy section validation: PASSED');
     }
+
+    // Setup request handlers with config closure
+    setupRequestHandlers(config);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

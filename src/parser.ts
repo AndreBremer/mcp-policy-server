@@ -14,17 +14,7 @@ const SHORT_RANGE_PATTERN = /^([A-Z]+(?:-[A-Z]+)*)\.(\d+)\.(\d+)-(\d+)$/;
 const WHOLE_SECTION_RANGE_PATTERN = /^([A-Z]+(?:-[A-Z]+)*)\.(\d+)-(\d+)$/;
 const SECTION_MARKER_PATTERN = /\{§/;
 
-// Prefix order for sorting sections
-const PREFIX_ORDER: Record<string, number> = {
-  META: 0,
-  SYS: 1,
-  'SYS-TPL': 2,
-  APP: 3,
-  'APP-HOOK': 4,
-  'APP-PLG': 5,
-  'APP-TPL': 6,
-  USER: 7,
-};
+// Sections are sorted alphabetically by prefix, then numerically by section number
 
 /**
  * Extract base prefix from extended prefix notation
@@ -340,24 +330,24 @@ export function isParentSection(sectionA: SectionNotation, sectionB: SectionNota
 }
 
 /**
- * Sort section notations by prefix order then numerically
+ * Sort section notations alphabetically by prefix, then numerically
  *
- * Orders sections according to PREFIX_ORDER constant, then numerically
- * within same prefix. Handles multi-level section numbers (4.1.2) and
- * extended prefixes (APP-HOOK, SYS-TPL).
+ * Orders sections alphabetically by prefix, then numerically within same
+ * prefix. Handles multi-level section numbers (4.1.2) and extended prefixes
+ * (APP-HOOK, SYS-TPL).
  *
  * @param notations - Array of section notations to sort
  * @returns Sorted array (mutates original array and returns it)
  *
  * @example
  * ```typescript
- * const sections = ['§APP.4.2', '§META.1', '§APP.4.1', '§SYS.2'];
+ * const sections = ['§SYS.2', '§APP.4.2', '§META.1', '§APP.4.1'];
  * sortSections(sections)
- * // Returns: ['§META.1', '§SYS.2', '§APP.4.1', '§APP.4.2']
+ * // Returns: ['§APP.4.1', '§APP.4.2', '§META.1', '§SYS.2']
  *
  * const withExtended = ['§APP-HOOK.2', '§APP.4', '§META.1'];
  * sortSections(withExtended)
- * // Returns: ['§META.1', '§APP.4', '§APP-HOOK.2']
+ * // Returns: ['§APP.4', '§APP-HOOK.2', '§META.1']
  * ```
  */
 export function sortSections(notations: SectionNotation[]): SectionNotation[] {
@@ -368,12 +358,10 @@ export function sortSections(notations: SectionNotation[]): SectionNotation[] {
     const aPrefix = a.substring(1, aPrefixEnd);
     const bPrefix = b.substring(1, bPrefixEnd);
 
-    // Compare by prefix order
-    const aOrder = PREFIX_ORDER[aPrefix] || 999;
-    const bOrder = PREFIX_ORDER[bPrefix] || 999;
-
-    if (aOrder !== bOrder) {
-      return aOrder - bOrder;
+    // Compare alphabetically by prefix
+    const prefixCompare = aPrefix.localeCompare(bPrefix);
+    if (prefixCompare !== 0) {
+      return prefixCompare;
     }
 
     // Same prefix - extract section numbers (everything after §PREFIX.)
@@ -387,8 +375,8 @@ export function sortSections(notations: SectionNotation[]): SectionNotation[] {
       .map(Number);
 
     for (let i = 0; i < Math.max(aSection.length, bSection.length); i++) {
-      const aPart = aSection[i] || 0;
-      const bPart = bSection[i] || 0;
+      const aPart = aSection[i] ?? 0;
+      const bPart = bSection[i] ?? 0;
 
       if (aPart !== bPart) {
         return aPart - bPart;

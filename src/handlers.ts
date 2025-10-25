@@ -10,6 +10,74 @@ import { validateSectionUniqueness, formatDuplicateErrors } from './validator.js
 import { ServerConfig } from './config.js';
 
 /**
+ * Tool argument interfaces for type safety
+ */
+interface FetchArgs {
+  sections: string[];
+  continuation?: string | null;
+}
+
+interface ResolveReferencesArgs {
+  sections: string[];
+}
+
+interface ExtractReferencesArgs {
+  file_path: string;
+}
+
+interface ValidateReferencesArgs {
+  references: string[];
+}
+
+/**
+ * Type guard for FetchArgs
+ */
+function isFetchArgs(args: unknown): args is FetchArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    'sections' in args &&
+    Array.isArray((args as FetchArgs).sections)
+  );
+}
+
+/**
+ * Type guard for ResolveReferencesArgs
+ */
+function isResolveReferencesArgs(args: unknown): args is ResolveReferencesArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    'sections' in args &&
+    Array.isArray((args as ResolveReferencesArgs).sections)
+  );
+}
+
+/**
+ * Type guard for ExtractReferencesArgs
+ */
+function isExtractReferencesArgs(args: unknown): args is ExtractReferencesArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    'file_path' in args &&
+    typeof (args as ExtractReferencesArgs).file_path === 'string'
+  );
+}
+
+/**
+ * Type guard for ValidateReferencesArgs
+ */
+function isValidateReferencesArgs(args: unknown): args is ValidateReferencesArgs {
+  return (
+    typeof args === 'object' &&
+    args !== null &&
+    'references' in args &&
+    Array.isArray((args as ValidateReferencesArgs).references)
+  );
+}
+
+/**
  * Chunk result structure
  *
  * Represents a single chunk of content from a large response.
@@ -167,11 +235,14 @@ export function chunkContent(content: string, maxTokens: number = 10000): ChunkR
  * );
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleFetch(args: any, config: ServerConfig): ToolResponse {
+export function handleFetch(args: unknown, config: ServerConfig): ToolResponse {
+  if (!isFetchArgs(args)) {
+    throw new Error('Invalid arguments: expected { sections: string[], continuation?: string }');
+  }
+
   const { sections, continuation = null } = args;
 
-  if (!Array.isArray(sections) || sections.length === 0) {
+  if (sections.length === 0) {
     throw new Error('sections parameter must be a non-empty array');
   }
 
@@ -257,11 +328,14 @@ export function handleFetch(args: any, config: ServerConfig): ToolResponse {
  * // Returns: {"policy-application.md": ["§APP.7"], "policy-system.md": ["§SYS.5"]}
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleResolveReferences(args: any, config: ServerConfig): ToolResponse {
+export function handleResolveReferences(args: unknown, config: ServerConfig): ToolResponse {
+  if (!isResolveReferencesArgs(args)) {
+    throw new Error('Invalid arguments: expected { sections: string[] }');
+  }
+
   const { sections } = args;
 
-  if (!Array.isArray(sections) || sections.length === 0) {
+  if (sections.length === 0) {
     throw new Error('sections parameter must be a non-empty array');
   }
 
@@ -306,13 +380,12 @@ export function handleResolveReferences(args: any, config: ServerConfig): ToolRe
  * // Returns: ["§APP.7", "§SYS.5", "§META.1"]
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleExtractReferences(args: any, _config: ServerConfig): ToolResponse {
-  const { file_path } = args;
-
-  if (!file_path) {
-    throw new Error('file_path parameter is required');
+export function handleExtractReferences(args: unknown, _config: ServerConfig): ToolResponse {
+  if (!isExtractReferencesArgs(args)) {
+    throw new Error('Invalid arguments: expected { file_path: string }');
   }
+
+  const { file_path } = args;
 
   try {
     // Read file content
@@ -363,11 +436,14 @@ export function handleExtractReferences(args: any, _config: ServerConfig): ToolR
  * // Returns: {valid: true, checked: 2, invalid: [], details: []}
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleValidateReferences(args: any, config: ServerConfig): ToolResponse {
+export function handleValidateReferences(args: unknown, config: ServerConfig): ToolResponse {
+  if (!isValidateReferencesArgs(args)) {
+    throw new Error('Invalid arguments: expected { references: string[] }');
+  }
+
   const { references } = args;
 
-  if (!Array.isArray(references) || references.length === 0) {
+  if (references.length === 0) {
     throw new Error('references parameter must be a non-empty array');
   }
 
@@ -437,8 +513,7 @@ export function handleValidateReferences(args: any, config: ServerConfig): ToolR
  * // Returns formatted markdown with all available sources
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleListSources(_args: any, config: ServerConfig): ToolResponse {
+export function handleListSources(_args: unknown, config: ServerConfig): ToolResponse {
   const sourceList = `# Policy Documentation Files
 
 ${Object.entries(config.stems)
@@ -488,17 +563,18 @@ All section references require § prefix:
  * // Returns: {request_params: {...}, request_method: "...", ...}
  * ```
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function handleInspectContext(_args: any, request: any): ToolResponse {
+export function handleInspectContext(_args: unknown, request: unknown): ToolResponse {
   // Try to access context information from the request
+  const req = request as Record<string, unknown>;
   const contextInfo = {
-    request_params: request.params,
-    request_method: request.method,
-    available_properties: Object.keys(request),
+    request_params: req.params ?? 'not available',
+    request_method: req.method ?? 'not available',
+    available_properties:
+      typeof request === 'object' && request !== null ? Object.keys(request) : [],
     // Try to access various context properties that might exist
-    _meta: request._meta ?? 'not available',
-    context: request.context ?? 'not available',
-    clientInfo: request.clientInfo ?? 'not available',
+    _meta: req._meta ?? 'not available',
+    context: req.context ?? 'not available',
+    clientInfo: req.clientInfo ?? 'not available',
   };
 
   return {

@@ -247,6 +247,34 @@ describe('resolver', () => {
       expect(section?.file).toBe('policy-app-hooks.md');
     });
 
+    it('should merge all files matching stem pattern into single namespace', () => {
+      // This test demonstrates the key behavior documented in POLICY_REFERENCE.md:
+      // All files matching {stem}.md and {stem}-*.md are merged into a single namespace.
+      // The hyphenated extension (APP-HOOK) is just a section identifier, not a file selector.
+
+      // Both APP and APP-HOOK use the same stem ('policy-app')
+      // so both policy-app.md and policy-app-hooks.md are searched
+
+      // 1. Regular APP section from policy-app.md
+      const appGathered = resolver.gatherSections(['§APP.1'], testConfig, policiesDir);
+      expect(appGathered.has('§APP.1')).toBe(true);
+      expect(appGathered.get('§APP.1')?.file).toBe('policy-app.md');
+
+      // 2. APP-HOOK section from policy-app-hooks.md
+      const hookGathered = resolver.gatherSections(['§APP-HOOK.1'], testConfig, policiesDir);
+      expect(hookGathered.has('§APP-HOOK.1')).toBe(true);
+      expect(hookGathered.get('§APP-HOOK.1')?.file).toBe('policy-app-hooks.md');
+
+      // 3. Both use the same file discovery process
+      const appFiles = resolver.discoverPolicyFiles('APP', testConfig, policiesDir);
+      const hookFiles = resolver.discoverPolicyFiles('APP-HOOK', testConfig, policiesDir);
+      expect(appFiles).toEqual(hookFiles); // Same files discovered for both prefixes
+
+      // 4. Both files are in the merged namespace
+      expect(appFiles).toContain('policy-app.md');
+      expect(appFiles).toContain('policy-app-hooks.md');
+    });
+
     it('should handle range notation in embedded references', () => {
       // TEST.2.2 contains §APP.4.1-3 range and §APP.7 which references TEST.1 → TEST.2
       // TEST.2 is parent of TEST.2.2 so it supersedes

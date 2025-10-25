@@ -558,12 +558,11 @@ describe('parser', () => {
   });
 
   describe('sortSections', () => {
-    it('should sort sections by prefix order', () => {
+    it('should sort sections alphabetically by prefix', () => {
       const sections: SectionNotation[] = ['§USER.1', '§APP.1', '§SYS.1'];
       const sorted = sortSections(sections);
-      // Note: META has order 0 but 0 || 999 = 999 (known bug in sortSections)
-      // Testing actual behavior: SYS(1) < APP(3) < USER(7)
-      expect(sorted).toEqual(['§SYS.1', '§APP.1', '§USER.1']);
+      // Alphabetical order: APP < SYS < USER
+      expect(sorted).toEqual(['§APP.1', '§SYS.1', '§USER.1']);
     });
 
     it('should sort sections numerically within same prefix', () => {
@@ -593,20 +592,22 @@ describe('parser', () => {
     it('should handle mixed prefix types', () => {
       const sections: SectionNotation[] = ['§APP-HOOK.2', '§APP.4', '§SYS.1'];
       const sorted = sortSections(sections);
-      // SYS(1) < APP(3) < APP-HOOK(4)
-      expect(sorted).toEqual(['§SYS.1', '§APP.4', '§APP-HOOK.2']);
+      // Alphabetical order: APP < APP-HOOK < SYS
+      expect(sorted).toEqual(['§APP.4', '§APP-HOOK.2', '§SYS.1']);
     });
 
-    it('should sort extended prefixes by PREFIX_ORDER', () => {
+    it('should sort extended prefixes alphabetically', () => {
       const sections: SectionNotation[] = ['§APP-TPL.1', '§APP-PLG.1', '§APP-HOOK.1', '§APP.1'];
       const sorted = sortSections(sections);
+      // Alphabetical order: APP < APP-HOOK < APP-PLG < APP-TPL
       expect(sorted).toEqual(['§APP.1', '§APP-HOOK.1', '§APP-PLG.1', '§APP-TPL.1']);
     });
 
     it('should handle system template prefix correctly', () => {
       const sections: SectionNotation[] = ['§APP.1', '§SYS-TPL.1', '§SYS.1'];
       const sorted = sortSections(sections);
-      expect(sorted).toEqual(['§SYS.1', '§SYS-TPL.1', '§APP.1']);
+      // Alphabetical order: APP < SYS < SYS-TPL
+      expect(sorted).toEqual(['§APP.1', '§SYS.1', '§SYS-TPL.1']);
     });
 
     it('should return empty array for empty input', () => {
@@ -628,12 +629,12 @@ describe('parser', () => {
       expect(sections).toEqual(['§APP.1', '§APP.2']); // Mutated
     });
 
-    it('should handle unknown prefix by sorting to end', () => {
+    it('should handle unknown prefix alphabetically', () => {
       const sections: SectionNotation[] = ['§APP.1', '§UNKNOWN.1', '§SYS.1'];
       const sorted = sortSections(sections);
-      // SYS(1) < APP(3) < UNKNOWN(999)
-      expect(sorted[0]).toBe('§SYS.1');
-      expect(sorted[1]).toBe('§APP.1');
+      // Alphabetical order: APP < SYS < UNKNOWN
+      expect(sorted[0]).toBe('§APP.1');
+      expect(sorted[1]).toBe('§SYS.1');
       expect(sorted[2]).toBe('§UNKNOWN.1');
     });
 
@@ -647,13 +648,13 @@ describe('parser', () => {
         '§SYS-TPL.1',
       ];
       const sorted = sortSections(sections);
-      // Order: SYS(1) < SYS-TPL(2) < APP(3) < APP-HOOK(4) < USER(7)
+      // Alphabetical order: APP < APP-HOOK < SYS < SYS-TPL < USER
       expect(sorted).toEqual([
-        '§SYS.2.1',
-        '§SYS-TPL.1',
         '§APP.4.1',
         '§APP.4.2',
         '§APP-HOOK.2',
+        '§SYS.2.1',
+        '§SYS-TPL.1',
         '§USER.5',
       ]);
     });

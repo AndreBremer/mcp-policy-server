@@ -115,7 +115,7 @@ describe('MCP Server Integration', () => {
       test('throws error for non-array sections parameter', () => {
         expect(() => {
           handleFetch({ sections: '§TEST.1' }, TEST_CONFIG);
-        }).toThrow('sections parameter must be a non-empty array');
+        }).toThrow('Invalid arguments: expected { sections: string[]');
       });
 
       test('throws error for invalid section notation', () => {
@@ -151,7 +151,9 @@ describe('MCP Server Integration', () => {
           );
 
           expect(response.content.length).toBeGreaterThan(1);
-          expect(response.content[1].text).toContain('INCOMPLETE RESPONSE - CONTINUATION REQUIRED');
+          expect(response.content[1].text).toContain(
+            'INCOMPLETE RESPONSE - MANDATORY CONTINUATION REQUIRED'
+          );
           expect(response.content[1].text).toContain('continuation');
         });
 
@@ -288,7 +290,7 @@ describe('MCP Server Integration', () => {
       test('throws error for non-array sections parameter', () => {
         expect(() => {
           handleResolveReferences({ sections: '§TEST.1' }, TEST_CONFIG);
-        }).toThrow('sections parameter must be a non-empty array');
+        }).toThrow('Invalid arguments: expected { sections: string[]');
       });
     });
 
@@ -341,7 +343,7 @@ describe('MCP Server Integration', () => {
       test('throws error for missing file_path parameter', () => {
         expect(() => {
           handleExtractReferences({}, TEST_CONFIG);
-        }).toThrow('file_path parameter is required');
+        }).toThrow('Invalid arguments: expected { file_path: string }');
       });
 
       test('throws error for non-existent file', () => {
@@ -421,7 +423,7 @@ describe('MCP Server Integration', () => {
       test('throws error for non-array references parameter', () => {
         expect(() => {
           handleValidateReferences({ references: '§TEST.1' }, TEST_CONFIG);
-        }).toThrow('references parameter must be a non-empty array');
+        }).toThrow('Invalid arguments: expected { references: string[]');
       });
     });
 
