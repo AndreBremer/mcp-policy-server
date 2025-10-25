@@ -36,6 +36,16 @@ const server = new Server(
       tools: {},
       prompts: {},
     },
+    instructions: `When you encounter § references (like §APP.7 or §SYS.5) in instructions or files, use the mcp__policy-server__fetch_policies tool to retrieve the referenced policy sections.
+
+Examples:
+- See §APP.7 → Call mcp__policy-server__fetch_policies with {"sections": ["§APP.7"]}
+- Follow §APP.4.1-3 → Call mcp__policy-server__fetch_policies with {"sections": ["§APP.4.1-3"]} (ranges expand automatically)
+- Multiple refs §APP.7, §SYS.5 → Call mcp__policy-server__fetch_policies with {"sections": ["§APP.7", "§SYS.5"]}
+
+The tool automatically resolves embedded § references (if §APP.7 mentions §SYS.5, both sections are returned).
+
+Only fetch when you need policy details to complete your task. Don't fetch if the content is already in your context or the reference is purely informational.`,
   }
 );
 

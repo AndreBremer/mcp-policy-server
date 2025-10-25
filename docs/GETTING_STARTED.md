@@ -95,6 +95,8 @@ You should see your configured prefixes and policy files.
 
 Create an agent file that references your policies.
 
+**Key principle:** Agents must be explicitly instructed to call `mcp__policy-server__fetch_policies` with the sections they need. Simply mentioning § references is not enough - agents need clear instructions to fetch them.
+
 **.claude/agents/code-reviewer.md:**
 ```markdown
 ---
@@ -110,7 +112,11 @@ You are a code reviewer ensuring adherence to team standards.
 
 When reviewing code:
 
-1. **Fetch relevant standards** using the MCP `fetch_policies` tool:
+1. **Fetch relevant standards** by calling the `mcp__policy-server__fetch_policies` tool with:
+   ```json
+   {"sections": ["§CODE.1", "§CODE.2", "§CODE.3", "§CODE.4"]}
+   ```
+   This retrieves:
    - §CODE.1 - General principles
    - §CODE.2 - Error handling
    - §CODE.3 - Testing requirements
@@ -123,12 +129,9 @@ When reviewing code:
    - **Issues**: Specific violations with section references
    - **Recommendations**: How to fix with code examples
 
-## Review Criteria
+## Important
 
-- Code readability and maintainability
-- Error handling completeness
-- Test coverage adequacy
-- Adherence to style guidelines
+Always fetch policies FIRST before reviewing. The § references in step 1 are placeholders - you must actually call the tool to get the policy content.
 
 Cite specific policy sections (§CODE.N) when noting violations.
 ```
@@ -266,9 +269,29 @@ See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and 
 **Symptom:** Agent responds without consulting policies
 
 **Solution:**
-- Make agent instructions explicit: "Use the MCP fetch_policies tool to retrieve §CODE.1"
-- List specific sections to fetch
-- Include clear process steps (1. Fetch policies, 2. Apply to task)
+
+Agents must be explicitly instructed to call the tool. Add clear, actionable instructions:
+
+```markdown
+1. **Fetch standards** by calling `mcp__policy-server__fetch_policies` with:
+   ```json
+   {"sections": ["§CODE.1", "§CODE.2", "§CODE.3"]}
+   ```
+
+2. Review code against fetched standards
+```
+
+**What doesn't work:**
+- ❌ "Follow §CODE.1 standards" (too vague)
+- ❌ "Reference §CODE.1-3" (doesn't tell agent to fetch)
+- ❌ Listing § references without explaining how to fetch them
+
+**What works:**
+- ✅ "Call mcp__policy-server__fetch_policies with {"sections": ["§CODE.1"]}"
+- ✅ Step-by-step process that includes the tool call
+- ✅ JSON example showing exact tool invocation
+
+**Note:** While subagents inherit MCP tools automatically (when `tools` field is omitted), they may not receive MCP server instructions. Explicit tool usage instructions in agent prompts ensure reliable behavior across different MCP clients.
 
 ### Stale Policy Content
 

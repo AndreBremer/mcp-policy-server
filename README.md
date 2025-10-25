@@ -79,6 +79,8 @@ See [Installation Guide](docs/INSTALLATION.md) to set up the server, then [Getti
 
 ## Available MCP Tools
 
+**Note:** The server includes built-in instructions for AI clients explaining when and how to fetch policies. When agents encounter § references, they should automatically fetch the referenced sections.
+
 ### `fetch_policies` - Retrieve Policy Sections
 Fetch one or more policy sections. Automatically resolves embedded § references.
 

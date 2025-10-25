@@ -150,6 +150,94 @@ describe('validator', () => {
       // Not 6 (which would include TOC duplicates)
       expect(sectionIDs).toHaveLength(3);
     });
+
+    it('should ignore section markers in fenced blocks with language identifiers', () => {
+      // Create temp file with markdown language identifier
+      const tempFile = path.join(FIXTURES_DIR, 'temp-lang-identifier.md');
+      const content = `# Test Policy
+
+## {§TEST.1} Real Section
+
+Example:
+
+\`\`\`markdown
+## {§EXAMPLE.1} Example Section
+This is just an example
+\`\`\`
+
+## {§TEST.2} Another Real Section
+`;
+      fs.writeFileSync(tempFile, content);
+
+      try {
+        const sectionIDs = extractSectionIDs(tempFile);
+        expect(sectionIDs).toEqual(['§TEST.1', '§TEST.2']);
+        expect(sectionIDs).not.toContain('§EXAMPLE.1');
+      } finally {
+        fs.unlinkSync(tempFile);
+      }
+    });
+
+    it('should ignore section markers in unclosed fenced blocks', () => {
+      // This can happen in malformed files or during file edits
+      const tempFile = path.join(FIXTURES_DIR, 'temp-unclosed-fence.md');
+      const content = `# Test Policy
+
+## {§TEST.1} Real Section
+
+Example that was never closed:
+
+\`\`\`markdown
+## {§EXAMPLE.1} Example Section
+## {§EXAMPLE.2} Another Example
+`;
+      fs.writeFileSync(tempFile, content);
+
+      try {
+        const sectionIDs = extractSectionIDs(tempFile);
+        expect(sectionIDs).toEqual(['§TEST.1']);
+        expect(sectionIDs).not.toContain('§EXAMPLE.1');
+        expect(sectionIDs).not.toContain('§EXAMPLE.2');
+      } finally {
+        fs.unlinkSync(tempFile);
+      }
+    });
+
+    it('should handle multiple fenced blocks with language identifiers', () => {
+      const tempFile = path.join(FIXTURES_DIR, 'temp-multi-lang.md');
+      const content = `# Test Policy
+
+## {§TEST.1} Real Section
+
+TypeScript example:
+\`\`\`typescript
+const ref = "§FAKE.1";
+\`\`\`
+
+Python example:
+\`\`\`python
+ref = "§FAKE.2"
+\`\`\`
+
+## {§TEST.2} Another Real Section
+
+Markdown example:
+\`\`\`markdown
+## {§FAKE.3} Fake Section
+\`\`\`
+`;
+      fs.writeFileSync(tempFile, content);
+
+      try {
+        const sectionIDs = extractSectionIDs(tempFile);
+        expect(sectionIDs).toEqual(['§TEST.1', '§TEST.2']);
+        expect(sectionIDs).not.toContain('§FAKE.1');
+        expect(sectionIDs).not.toContain('§FAKE.2');
+        expect(sectionIDs).not.toContain('§FAKE.3');
+      } finally {
+        fs.unlinkSync(tempFile);
+      }
+    });
   });
 
   describe('validateSectionUniqueness', () => {
