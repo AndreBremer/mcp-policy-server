@@ -124,14 +124,6 @@ Reference documentation standards, template requirements, review processes. Agen
 ### Testing Agents
 Reference test coverage requirements, mocking patterns, integration test setup. Agents write tests that match your team's standards.
 
-## Contributing
-
-See [CLAUDE.md](CLAUDE.md) for development guidelines and architecture overview.
-
-## Troubleshooting
-
-See [Getting Started Guide](docs/GETTING_STARTED.md#troubleshooting) for installation, configuration, and usage issues.
-
 ## License
 
-GPL-3.0-or-later
+[GPL-3.0](https://www.gnu.org/licenses/gpl-3.0.en.html)
