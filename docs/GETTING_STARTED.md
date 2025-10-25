@@ -1,6 +1,6 @@
-# Getting Started with Policy Documentation Server
+# Getting Started with MCP Policy Server
 
-This guide walks you through setting up the Policy Documentation Server from scratch. You'll create policy files, configure the server, and write your first agent that uses policy references.
+This guide walks you through setting up the Policy Server from scratch. You'll create policy files, configure the server, and write your first agent that uses policy references.
 
 **Note:** This server is best suited for AI tools that utilize subagents or prompt libraries (commands), such as Claude Code with its agent system or custom slash commands. The § notation works most effectively when agents can programmatically fetch policy sections via MCP tools.
 
