@@ -37,11 +37,19 @@ See [Getting Started Guide](GETTING_STARTED.md) to create policies.json and poli
 ```bash
 claude mcp add --transport stdio policy-server \
   npx -y @andrebremer/mcp-policy-server \
-  --env MCP_POLICY_CONFIG=[relative/path/to/policies.json] \
+  --env MCP_POLICY_CONFIG="[relative/path/to/policies]" \
   --scope project
 ```
 
-**Windows:** CLI installation on Windows is currently unsupported due to `cmd /c` wrapper requirements and path escaping issues. Use Manual Configuration (Option 2) instead.
+
+**Windows:**
+```powershell
+claude mcp add-json policy-server ('{' `
+  '"type": "stdio", "command": "cmd",' + `
+  '"args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"], ' + `
+  '"env": {"MCP_POLICY_CONFIG": "[relative/path/to/policies]"}}') `
+  --scope project
+```
 
 ### Option 2: Manual Configuration (Recommended for Windows)
 
@@ -57,7 +65,7 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
       "command": "npx",
       "args": ["-y", "@andrebremer/mcp-policy-server"],
       "env": {
-        "MCP_POLICY_CONFIG": "./policies/*.md"
+        "MCP_POLICY_CONFIG": "[relative/path/to/policies]"
       }
     }
   }
@@ -72,7 +80,7 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
       "env": {
-        "MCP_POLICY_CONFIG": "./policies/*.md"
+        "MCP_POLICY_CONFIG": "[relative/path/to/policies]"
       }
     }
   }

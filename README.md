@@ -79,7 +79,14 @@ claude mcp add --transport stdio policy-server \
   --scope project
 ```
 
-**Windows:** Use manual configuration (see below)
+**Windows:**
+```powershell
+claude mcp add-json policy-server ('{' `
+  '"type": "stdio", "command": "cmd",' + `
+  '"args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"], ' + `
+  '"env": {"MCP_POLICY_CONFIG": "./policies/*.md"}}') `
+  --scope project
+```
 
 ### Manual Configuration
 
@@ -164,6 +171,12 @@ MCP_POLICY_CONFIG='{"files": ["./policies/*.md"]}'
 - `{a,b}` - Alternatives (e.g., `./{policies,docs}/*.md`)
 
 See [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for details.
+
+## Removing the Server
+
+```bash
+claude mcp remove policy-server -s project
+```
 
 ## Getting Started
 
