@@ -1,14 +1,15 @@
 {
   "name": "@andrebremer/mcp-policy-server",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "MCP server providing token-efficient access to policy documentation via § notation",
   "main": "dist/index.js",
   "bin": {
-    "mcp-policy-server": "./dist/index.js"
+    "@andrebremer/mcp-policy-server": "dist/index.js",
+    "mcp-policy-server": "dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/AndreBremer/mcp-policy-server.git"
+    "url": "git+https://github.com/AndreBremer/mcp-policy-server.git"
   },
   "bugs": {
     "url": "https://github.com/AndreBremer/mcp-policy-server/issues"
