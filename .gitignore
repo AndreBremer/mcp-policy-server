@@ -34,3 +34,9 @@ logs/
 
 # Claude files
 .claude/
+
+# policy files
+.policies/
+
+# mcp server files
+.mcp.json
