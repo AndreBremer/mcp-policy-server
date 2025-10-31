@@ -5,9 +5,24 @@
 
 import * as fs from 'fs';
 import { expandRange, findEmbeddedReferences } from './parser.js';
-import { fetchSections, resolveSectionLocations } from './resolver.js';
-import { validateSectionUniqueness, formatDuplicateErrors } from './validator.js';
+import { fetchSectionsWithIndex, resolveSectionLocationsWithIndex } from './resolver.js';
+import { validateFromIndex, formatDuplicateErrors } from './validator.js';
 import { ServerConfig } from './config.js';
+import { ensureFreshIndex } from './indexer.js';
+import { IndexState } from './types.js';
+
+/**
+ * Validate that array parameter is non-empty
+ *
+ * @param arr - Array to validate
+ * @param paramName - Parameter name for error message
+ * @throws {Error} If array is empty
+ */
+function validateNonEmptyArray(arr: unknown[], paramName: string): void {
+  if (arr.length === 0) {
+    throw new Error(`${paramName} parameter must be a non-empty array`);
+  }
+}
 
 /**
  * Tool argument interfaces for type safety
@@ -217,6 +232,7 @@ export function chunkContent(content: string, maxTokens: number = 10000): ChunkR
  *
  * @param args - Tool arguments containing sections array and optional continuation token
  * @param config - Server configuration with policy mappings
+ * @param indexState - Index state for section lookups
  * @returns Tool response with section content or chunk
  * @throws Error if sections parameter is invalid or continuation token is invalid
  *
@@ -225,32 +241,39 @@ export function chunkContent(content: string, maxTokens: number = 10000): ChunkR
  * // Initial request
  * const response = handleFetch(
  *   { sections: ['§APP.7', '§SYS.5'] },
- *   config
+ *   config,
+ *   indexState
  * );
  *
  * // Continuation request
  * const nextChunk = handleFetch(
  *   { sections: ['§APP.7', '§SYS.5'], continuation: 'chunk:1' },
- *   config
+ *   config,
+ *   indexState
  * );
  * ```
  */
-export function handleFetch(args: unknown, config: ServerConfig): ToolResponse {
+export function handleFetch(
+  args: unknown,
+  config: ServerConfig,
+  indexState: IndexState
+): ToolResponse {
   if (!isFetchArgs(args)) {
     throw new Error('Invalid arguments: expected { sections: string[], continuation?: string }');
   }
 
   const { sections, continuation = null } = args;
 
-  if (sections.length === 0) {
-    throw new Error('sections parameter must be a non-empty array');
-  }
+  validateNonEmptyArray(sections, 'sections');
+
+  // Ensure index is fresh (lazy rebuild if files changed)
+  const index = ensureFreshIndex(indexState, config);
 
   // Expand any ranges
   const expandedSections: string[] = sections.flatMap((s: string) => expandRange(s));
 
   try {
-    const fullContent = fetchSections(expandedSections, config);
+    const fullContent = fetchSectionsWithIndex(expandedSections, index, config.baseDir);
     const chunks = chunkContent(fullContent, config.maxChunkTokens);
 
     // Debug logging
@@ -316,6 +339,7 @@ export function handleFetch(args: unknown, config: ServerConfig): ToolResponse {
  *
  * @param args - Tool arguments containing sections array
  * @param config - Server configuration with policy mappings
+ * @param indexState - Index state for section lookups
  * @returns Tool response with file-to-sections mapping as JSON
  * @throws Error if sections parameter is invalid
  *
@@ -323,27 +347,33 @@ export function handleFetch(args: unknown, config: ServerConfig): ToolResponse {
  * ```typescript
  * const response = handleResolveReferences(
  *   { sections: ['§APP.7', '§SYS.5'] },
- *   config
+ *   config,
+ *   indexState
  * );
  * // Returns: {"policy-application.md": ["§APP.7"], "policy-system.md": ["§SYS.5"]}
  * ```
  */
-export function handleResolveReferences(args: unknown, config: ServerConfig): ToolResponse {
+export function handleResolveReferences(
+  args: unknown,
+  config: ServerConfig,
+  indexState: IndexState
+): ToolResponse {
   if (!isResolveReferencesArgs(args)) {
     throw new Error('Invalid arguments: expected { sections: string[] }');
   }
 
   const { sections } = args;
 
-  if (sections.length === 0) {
-    throw new Error('sections parameter must be a non-empty array');
-  }
+  validateNonEmptyArray(sections, 'sections');
+
+  // Ensure index is fresh (lazy rebuild if files changed)
+  const index = ensureFreshIndex(indexState, config);
 
   // Expand any ranges
   const expandedSections: string[] = sections.flatMap((s: string) => expandRange(s));
 
   try {
-    const locations = resolveSectionLocations(expandedSections, config);
+    const locations = resolveSectionLocationsWithIndex(expandedSections, index, config.baseDir);
 
     return {
       content: [
@@ -424,6 +454,7 @@ export function handleExtractReferences(args: unknown, _config: ServerConfig): T
  *
  * @param args - Tool arguments containing references array
  * @param config - Server configuration with policy mappings
+ * @param indexState - Index state for section lookups
  * @returns Tool response with validation result as JSON
  * @throws Error if references parameter is invalid
  *
@@ -431,28 +462,31 @@ export function handleExtractReferences(args: unknown, _config: ServerConfig): T
  * ```typescript
  * const response = handleValidateReferences(
  *   { references: ['§APP.7', '§SYS.5'] },
- *   config
+ *   config,
+ *   indexState
  * );
  * // Returns: {valid: true, checked: 2, invalid: [], details: []}
  * ```
  */
-export function handleValidateReferences(args: unknown, config: ServerConfig): ToolResponse {
+export function handleValidateReferences(
+  args: unknown,
+  config: ServerConfig,
+  indexState: IndexState
+): ToolResponse {
   if (!isValidateReferencesArgs(args)) {
     throw new Error('Invalid arguments: expected { references: string[] }');
   }
 
   const { references } = args;
 
-  if (references.length === 0) {
-    throw new Error('references parameter must be a non-empty array');
-  }
+  validateNonEmptyArray(references, 'references');
+
+  // Ensure index is fresh (lazy rebuild if files changed)
+  const index = ensureFreshIndex(indexState, config);
 
   try {
-    // Use config.baseDir for policy directory
-    const policyDir = config.baseDir;
-
-    // Validate section uniqueness across all policy files
-    const validationResult = validateSectionUniqueness(config, policyDir);
+    // Validate section uniqueness using index
+    const validationResult = validateFromIndex(index);
 
     const result = {
       valid: true,
@@ -471,14 +505,22 @@ export function handleValidateReferences(args: unknown, config: ServerConfig): T
     // Check each reference exists
     const expandedRefs: string[] = references.flatMap((ref: string) => expandRange(ref));
     for (const ref of expandedRefs) {
-      try {
-        // Attempt to resolve and fetch the section
-        const sections = [ref];
-        fetchSections(sections, config);
-      } catch (error) {
+      // Check if section is in duplicates map (error case)
+      if (index.duplicates.has(ref)) {
         result.valid = false;
         result.invalid.push(ref);
-        result.details.push(`${ref}: ${error instanceof Error ? error.message : String(error)}`);
+        const files = index.duplicates.get(ref)!;
+        result.details.push(
+          `${ref}: Found in multiple files:\n${files.map((f) => `  - ${f}`).join('\n')}`
+        );
+        continue;
+      }
+
+      // Check if section exists in sectionMap
+      if (!index.sectionMap.has(ref)) {
+        result.valid = false;
+        result.invalid.push(ref);
+        result.details.push(`${ref}: Section not found in policy files`);
       }
     }
 
@@ -500,28 +542,37 @@ export function handleValidateReferences(args: unknown, config: ServerConfig): T
 /**
  * Handle list_sources tool request
  *
- * Lists all available policy documentation files and their
- * section prefixes with usage examples.
+ * Lists all available policy documentation files with usage examples.
  *
  * @param _args - Tool arguments (unused)
- * @param config - Server configuration with policy mappings
+ * @param config - Server configuration with file list
+ * @param indexState - Index state for section lookups
  * @returns Tool response with formatted source list
  *
  * @example
  * ```typescript
- * const response = handleListSources({}, config);
+ * const response = handleListSources({}, config, indexState);
  * // Returns formatted markdown with all available sources
  * ```
  */
-export function handleListSources(_args: unknown, config: ServerConfig): ToolResponse {
+export function handleListSources(
+  _args: unknown,
+  config: ServerConfig,
+  indexState: IndexState
+): ToolResponse {
+  // Ensure index is fresh (lazy rebuild if files changed)
+  const index = ensureFreshIndex(indexState, config);
+
   const sourceList = `# Policy Documentation Files
 
-${Object.entries(config.stems)
-  .map(
-    ([prefix, stem]) =>
-      `**${prefix}** - ${stem}.md\n  Policy documentation for ${prefix.toLowerCase()} layer`
-  )
-  .join('\n\n')}
+${config.files.map((file) => `- ${file}`).join('\n')}
+
+## Index Statistics
+
+- Files indexed: ${index.fileCount}
+- Sections indexed: ${index.sectionCount}
+- Duplicate sections: ${index.duplicates.size}
+- Last indexed: ${index.lastIndexed.toISOString()}
 
 ## Section Format
 

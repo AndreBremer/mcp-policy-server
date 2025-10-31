@@ -1,27 +1,27 @@
 /**
  * Configuration loading and validation
- * Handles single-file configuration system for policy server
+ * Handles file-based, inline JSON, and direct glob configuration formats
  */
 
 import * as fs from 'fs';
 import * as path from 'path';
+import fg from 'fast-glob';
 import { ConfigError } from './types.js';
 
 /**
  * Server configuration interface
  *
  * Contains all settings needed for server operation including
- * prefix mappings and policy directory location.
+ * policy file lists and response chunking configuration.
  *
  * @example
  * ```typescript
  * const config: ServerConfig = {
- *   stems: {
- *     META: 'policy-meta',
- *     SYS: 'policy-system',
- *     APP: 'policy-application',
- *     USER: 'policy-user'
- *   },
+ *   files: [
+ *     '/absolute/path/to/policies/policy-meta.md',
+ *     '/absolute/path/to/policies/policy-system.md',
+ *     '/absolute/path/to/policies/policy-application.md'
+ *   ],
  *   baseDir: '/absolute/path/to/policies',
  *   maxChunkTokens: 10000
  * };
@@ -29,20 +29,12 @@ import { ConfigError } from './types.js';
  */
 export interface ServerConfig {
   /**
-   * Prefix-to-stem mapping for policy file discovery
+   * Absolute file paths to all policy files
    *
-   * Maps policy prefixes (META, SYS, APP, USER) to file stems.
-   * File stems are combined with .md extension to find policy files.
-   *
-   * @example
-   * ```typescript
-   * stems: {
-   *   META: 'policy-meta',    // Resolves to policy-meta.md
-   *   APP: 'policy-application' // Resolves to policy-application.md
-   * }
-   * ```
+   * Expanded from glob patterns and resolved to absolute paths.
+   * All files must exist, be readable, and have .md extension.
    */
-  stems: Record<string, string>;
+  files: string[];
 
   /**
    * Absolute path to policy directory
@@ -64,57 +56,129 @@ export interface ServerConfig {
 }
 
 /**
- * Policy file mapping interface
- *
- * Maps a prefix to its stem and discovered policy files.
- * Used for file discovery when handling extended prefixes
- * (APP-HOOK, APP-PLG, etc.) that map to multiple files.
- *
- * Not currently used but defined for Phase 2 implementation.
- *
- * @example
- * ```typescript
- * const mapping: PolicyFileMapping = {
- *   prefix: 'APP',
- *   stem: 'policy-application',
- *   files: ['policy-application.md', 'policy-application-hooks.md']
- * };
- * ```
- */
-export interface PolicyFileMapping {
-  /**
-   * Base prefix (META, SYS, APP, USER)
-   */
-  prefix: string;
-
-  /**
-   * File stem without extension
-   */
-  stem: string;
-
-  /**
-   * Discovered policy files for this prefix
-   * Includes base file and extension files matching {stem}-*.md
-   */
-  files: string[];
-}
-
-/**
  * Structure of policies.json file
  */
 interface PoliciesManifestFile {
-  prefixes: Record<string, string>;
+  files: string[]; // Array of glob patterns or paths
 }
 
 /**
- * Load configuration from policies.json
+ * Expand glob patterns to absolute file paths
  *
- * Loads policies.json specified by MCP_POLICY_CONFIG environment variable.
- * The policy directory is determined from the location of policies.json.
+ * Uses fast-glob to expand patterns. Deduplicates results.
+ * Logs warnings for zero-match patterns. Fatal error if final list is empty.
+ *
+ * @param patterns - Glob patterns or file paths
+ * @param baseDir - Base directory for relative path resolution
+ * @returns Absolute file paths after expansion and deduplication
+ * @throws {ConfigError} If final file list is empty or glob expansion fails
+ */
+function expandGlobs(patterns: string[], baseDir: string): string[] {
+  const allFiles: string[] = [];
+
+  for (const pattern of patterns) {
+    try {
+      // Resolve pattern relative to baseDir
+      const resolvedPattern = path.isAbsolute(pattern)
+        ? path.normalize(pattern)
+        : path.resolve(baseDir, pattern);
+
+      // Convert Windows backslashes to forward slashes for fast-glob compatibility
+      const normalizedPattern = resolvedPattern.replace(/\\/g, '/');
+
+      // Expand glob pattern
+      const matches = fg.sync(normalizedPattern, {
+        dot: false,
+        followSymbolicLinks: true,
+        onlyFiles: true,
+        absolute: true,
+      });
+
+      if (matches.length === 0) {
+        console.error(`  Warning: Pattern "${pattern}" matched 0 files`);
+      }
+      allFiles.push(...matches);
+    } catch (error) {
+      throw new ConfigError(
+        `Glob expansion failed for pattern "${pattern}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+  }
+
+  // Deduplicate using Set
+  const uniqueFiles = Array.from(new Set(allFiles));
+  const duplicateCount = allFiles.length - uniqueFiles.length;
+
+  if (duplicateCount > 0) {
+    console.error(`  Removed ${duplicateCount} duplicate paths after expansion`);
+  }
+
+  if (uniqueFiles.length === 0) {
+    throw new ConfigError(
+      `No policy files found after glob expansion. Patterns: ${patterns.join(', ')}`
+    );
+  }
+
+  return uniqueFiles;
+}
+
+/**
+ * Validate that all files exist, are readable, and have .md extension
+ *
+ * Symlinks are followed. Target must meet all requirements.
+ *
+ * @param files - Absolute file paths to validate
+ * @throws {ConfigError} If any file fails validation
+ */
+function validateFiles(files: string[]): void {
+  for (const file of files) {
+    // Check existence
+    if (!fs.existsSync(file)) {
+      throw new ConfigError(`Policy file does not exist: ${file}`);
+    }
+
+    // Get file stats (follows symlinks per spec line 256)
+    let stats: fs.Stats;
+    try {
+      stats = fs.statSync(file);
+    } catch (error) {
+      throw new ConfigError(
+        `Cannot access policy file "${file}": ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    // Check it's a regular file (not directory)
+    if (!stats.isFile()) {
+      throw new ConfigError(`Policy file is not a regular file: ${file}`);
+    }
+
+    // Check .md extension (case-sensitive per spec line 256, even on Windows)
+    if (!file.endsWith('.md')) {
+      throw new ConfigError(`Policy file must have .md extension: ${file}`);
+    }
+
+    // Check readability
+    try {
+      fs.accessSync(file, fs.constants.R_OK);
+    } catch {
+      throw new ConfigError(`Policy file is not readable: ${file}`);
+    }
+  }
+}
+
+/**
+ * Load configuration from policies.json, inline JSON, or direct glob
+ *
+ * Supports three configuration formats detected in this order:
+ * 1. Ends with .json → load as file-based config (fatal if not exists)
+ * 2. Starts with { AND ends with } → parse as inline JSON (fatal if invalid)
+ * 3. Otherwise → treat as direct glob pattern
+ *
+ * If MCP_POLICY_CONFIG not set → default to ./policies.json from working directory
  *
  * @param configPath - Path to policies.json (for testing), overrides MCP_POLICY_CONFIG
- * @returns Server configuration
- * @throws {ConfigError} If configuration file is missing or invalid
+ * @returns Server configuration with expanded file paths
+ * @throws {ConfigError} If configuration is missing, invalid, or files fail validation
  *
  * @example
  * ```typescript
@@ -126,53 +190,84 @@ interface PoliciesManifestFile {
  * ```
  */
 export function loadConfig(configPath?: string): ServerConfig {
-  // Determine config file path: explicit parameter or MCP_POLICY_CONFIG env var
-  // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
-  const policiesPath = configPath || process.env.MCP_POLICY_CONFIG;
+  // Step 1: Get config value
+  // Priority: configPath param (testing) > MCP_POLICY_CONFIG env var > default ./policies.json (spec line 240)
+  const configValue = configPath ?? process.env.MCP_POLICY_CONFIG ?? './policies.json';
 
-  if (!policiesPath) {
-    throw new ConfigError(
-      'MCP_POLICY_CONFIG environment variable must be set to the absolute path of policies.json'
-    );
+  let manifest: PoliciesManifestFile;
+  let baseDir: string;
+  let configSource: string;
+
+  // Step 2: Detect format and load files array
+  if (configValue.endsWith('.json')) {
+    // Format 1: File-based configuration
+    const resolvedPath = path.isAbsolute(configValue)
+      ? configValue
+      : path.resolve(process.cwd(), configValue);
+
+    if (!fs.existsSync(resolvedPath)) {
+      throw new ConfigError(`Policy configuration file not found: ${resolvedPath}`);
+    }
+
+    try {
+      const fileContent = fs.readFileSync(resolvedPath, 'utf8');
+      manifest = JSON.parse(fileContent);
+    } catch (error) {
+      throw new ConfigError(
+        `Failed to parse policies manifest at ${resolvedPath}: ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    baseDir = path.dirname(resolvedPath);
+    configSource = resolvedPath;
+  } else if (configValue.startsWith('{') && configValue.endsWith('}')) {
+    // Format 2: Inline JSON configuration
+    try {
+      manifest = JSON.parse(configValue);
+    } catch (error) {
+      throw new ConfigError(
+        `Failed to parse inline JSON configuration (detected by { } delimiters): ${error instanceof Error ? error.message : String(error)}`
+      );
+    }
+
+    baseDir = process.cwd();
+    configSource = 'MCP_POLICY_CONFIG (inline JSON)';
+  } else {
+    // Format 3: Direct glob pattern
+    manifest = { files: [configValue] };
+    baseDir = process.cwd();
+    configSource = `MCP_POLICY_CONFIG (direct glob: "${configValue}")`;
   }
 
-  // Load policies.json
-  if (!fs.existsSync(policiesPath)) {
-    throw new ConfigError(`Policy configuration not found: ${policiesPath}`);
-  }
+  // Step 3: Log configuration loading
+  console.error('Policy server configuration loaded:');
+  console.error(`  Source: ${configSource}`);
+  console.error(`  Base directory: ${baseDir}`);
+  console.error(`  Patterns: ${manifest.files.length} configured`);
 
-  let policiesManifest: PoliciesManifestFile;
-  try {
-    const fileContent = fs.readFileSync(policiesPath, 'utf8');
-    policiesManifest = JSON.parse(fileContent);
-  } catch (error) {
-    throw new ConfigError(
-      `Failed to parse policies manifest at ${policiesPath}: ${error instanceof Error ? error.message : String(error)}`
-    );
-  }
+  // Step 4: Expand globs to absolute file paths
+  const expandedFiles = expandGlobs(manifest.files, baseDir);
 
-  // Policy directory is the directory containing policies.json
-  const baseDir = path.dirname(policiesPath);
+  console.error(`  Files: ${expandedFiles.length} total after expansion`);
 
-  // Build configuration
-  const config: ServerConfig = {
-    stems: policiesManifest.prefixes,
+  // Step 5: Validate files
+  validateFiles(expandedFiles);
+
+  // Step 6: Return ServerConfig
+  return {
+    files: expandedFiles,
     baseDir,
-    maxChunkTokens: 8000,
+    maxChunkTokens: 10000,
   };
-
-  // Validate before returning
-  validateConfiguration(config);
-
-  return config;
 }
 
 /**
  * Validate configuration for required fields and constraints
  *
  * Ensures configuration contains all required fields with valid values:
- * - stems must be non-empty object with string values
+ * - files must be non-empty array
  * - baseDir must be non-empty string
+ * - maxChunkTokens must be positive number if present
  *
  * @param config - Configuration object to validate
  * @throws {ConfigError} If validation fails
@@ -180,32 +275,25 @@ export function loadConfig(configPath?: string): ServerConfig {
  * @example
  * ```typescript
  * const config: ServerConfig = {
- *   stems: { APP: 'policy-application' },
- *   baseDir: '/absolute/path/to/policies'
+ *   files: ['/path/to/policy.md'],
+ *   baseDir: '/path/to'
  * };
  * validateConfiguration(config); // Passes
  *
  * const badConfig: ServerConfig = {
- *   stems: {},
+ *   files: [],
  *   baseDir: ''
  * };
  * validateConfiguration(badConfig); // Throws ConfigError
  * ```
  */
 export function validateConfiguration(config: ServerConfig): void {
-  if (!config.stems || typeof config.stems !== 'object') {
-    throw new ConfigError('Configuration missing required field: stems (from policies.json)');
+  if (!config.files || !Array.isArray(config.files)) {
+    throw new ConfigError('Configuration missing required field: files (must be array)');
   }
 
-  if (Object.keys(config.stems).length === 0) {
-    throw new ConfigError('Configuration error: stems mapping is empty');
-  }
-
-  // Validate stems contains only string values
-  for (const [prefix, stem] of Object.entries(config.stems)) {
-    if (typeof stem !== 'string' || stem.length === 0) {
-      throw new ConfigError(`Configuration error: invalid stem value for prefix ${prefix}`);
-    }
+  if (config.files.length === 0) {
+    throw new ConfigError('Configuration error: files array is empty');
   }
 
   if (!config.baseDir || typeof config.baseDir !== 'string') {

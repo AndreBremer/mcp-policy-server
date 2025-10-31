@@ -16,21 +16,25 @@ import {
   chunkContent,
 } from '../src/handlers';
 import { ServerConfig } from '../src/config';
+import { initializeIndexState, closeIndexState } from '../src/indexer';
+import { IndexState } from '../src/types';
 
 // Test configuration matching fixture structure
 // baseDir should be the actual policy directory, not the project root
+const FIXTURES_DIR = path.join(__dirname, 'fixtures', 'sample-policies');
 const TEST_CONFIG: ServerConfig = {
-  stems: {
-    TEST: 'policy-test',
-    META: 'policy-meta',
-    APP: 'policy-app',
-    SYS: 'policy-sys',
-    DUP: 'policy-duplicate1',
-    SUB: 'policy-subsections',
-    EMPTY: 'policy-empty',
-    LARGE: 'policy-large',
-  },
-  baseDir: path.join(__dirname, 'fixtures', 'sample-policies'),
+  files: [
+    path.join(FIXTURES_DIR, 'policy-test.md'),
+    path.join(FIXTURES_DIR, 'policy-meta.md'),
+    path.join(FIXTURES_DIR, 'policy-app.md'),
+    path.join(FIXTURES_DIR, 'policy-sys.md'),
+    path.join(FIXTURES_DIR, 'policy-duplicate1.md'),
+    path.join(FIXTURES_DIR, 'policy-subsections.md'),
+    path.join(FIXTURES_DIR, 'policy-empty.md'),
+    path.join(FIXTURES_DIR, 'policy-large.md'),
+    path.join(FIXTURES_DIR, 'policy-app-hooks.md'),
+  ],
+  baseDir: FIXTURES_DIR,
   maxChunkTokens: 10000,
 };
 
@@ -41,20 +45,35 @@ const SMALL_CHUNK_CONFIG: ServerConfig = {
 };
 
 describe('MCP Server Integration', () => {
+  let indexState: IndexState;
+  let smallChunkIndexState: IndexState;
+
+  beforeAll(() => {
+    // Initialize index state once for all tests
+    indexState = initializeIndexState(TEST_CONFIG);
+    smallChunkIndexState = initializeIndexState(SMALL_CHUNK_CONFIG);
+  });
+
+  afterAll(() => {
+    // Clean up file watchers after tests
+    closeIndexState(indexState);
+    closeIndexState(smallChunkIndexState);
+  });
+
   describe('Configuration', () => {
     test('test config has all required fields', () => {
       expect(TEST_CONFIG.baseDir).toBeDefined();
-      expect(TEST_CONFIG.stems).toBeDefined();
-      expect(Object.keys(TEST_CONFIG.stems).length).toBeGreaterThan(0);
+      expect(TEST_CONFIG.files).toBeDefined();
+      expect(Array.isArray(TEST_CONFIG.files)).toBe(true);
+      expect(TEST_CONFIG.files.length).toBeGreaterThan(0);
     });
 
     test('test config has maxChunkTokens default', () => {
       expect(TEST_CONFIG.maxChunkTokens).toBe(10000);
     });
 
-    test('fixture files exist for all prefixes', () => {
-      for (const [, stem] of Object.entries(TEST_CONFIG.stems)) {
-        const filePath = path.join(TEST_CONFIG.baseDir, `${stem}.md`);
+    test('all configured files exist', () => {
+      for (const filePath of TEST_CONFIG.files) {
         expect(fs.existsSync(filePath)).toBe(true);
       }
     });
@@ -63,7 +82,7 @@ describe('MCP Server Integration', () => {
   describe('Tool Handlers', () => {
     describe('handleFetch', () => {
       test('fetches single section successfully', () => {
-        const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG);
+        const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG, indexState);
 
         expect(response.content).toBeDefined();
         expect(response.content.length).toBeGreaterThan(0);
@@ -73,14 +92,18 @@ describe('MCP Server Integration', () => {
       });
 
       test('fetches multiple sections from same file', () => {
-        const response = handleFetch({ sections: ['§TEST.1', '§TEST.3'] }, TEST_CONFIG);
+        const response = handleFetch({ sections: ['§TEST.1', '§TEST.3'] }, TEST_CONFIG, indexState);
 
         expect(response.content[0].text).toContain('§TEST.1');
         expect(response.content[0].text).toContain('§TEST.3');
       });
 
       test('fetches sections from different files', () => {
-        const response = handleFetch({ sections: ['§APP.7', '§SYS.5', '§META.1'] }, TEST_CONFIG);
+        const response = handleFetch(
+          { sections: ['§APP.7', '§SYS.5', '§META.1'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const text = response.content[0].text;
         expect(text).toContain('§APP.7');
@@ -89,7 +112,7 @@ describe('MCP Server Integration', () => {
       });
 
       test('expands range notation', () => {
-        const response = handleFetch({ sections: ['§APP.4.1-3'] }, TEST_CONFIG);
+        const response = handleFetch({ sections: ['§APP.4.1-3'] }, TEST_CONFIG, indexState);
 
         const text = response.content[0].text;
         expect(text).toContain('§APP.4.1');
@@ -98,7 +121,7 @@ describe('MCP Server Integration', () => {
       });
 
       test('resolves embedded references recursively', () => {
-        const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG);
+        const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG, indexState);
 
         const text = response.content[0].text;
         // TEST.1 references TEST.2 and TEST.3
@@ -108,37 +131,37 @@ describe('MCP Server Integration', () => {
 
       test('throws error for empty sections array', () => {
         expect(() => {
-          handleFetch({ sections: [] }, TEST_CONFIG);
+          handleFetch({ sections: [] }, TEST_CONFIG, indexState);
         }).toThrow('sections parameter must be a non-empty array');
       });
 
       test('throws error for non-array sections parameter', () => {
         expect(() => {
-          handleFetch({ sections: '§TEST.1' }, TEST_CONFIG);
+          handleFetch({ sections: '§TEST.1' }, TEST_CONFIG, indexState);
         }).toThrow('Invalid arguments: expected { sections: string[]');
       });
 
       test('throws error for invalid section notation', () => {
         expect(() => {
-          handleFetch({ sections: ['TEST.1'] }, TEST_CONFIG);
+          handleFetch({ sections: ['TEST.1'] }, TEST_CONFIG, indexState);
         }).toThrow();
       });
 
       test('throws error for unknown prefix', () => {
         expect(() => {
-          handleFetch({ sections: ['§UNKNOWN.1'] }, TEST_CONFIG);
+          handleFetch({ sections: ['§UNKNOWN.1'] }, TEST_CONFIG, indexState);
         }).toThrow();
       });
 
       test('throws error for missing section', () => {
         expect(() => {
-          handleFetch({ sections: ['§TEST.999'] }, TEST_CONFIG);
+          handleFetch({ sections: ['§TEST.999'] }, TEST_CONFIG, indexState);
         }).toThrow();
       });
 
       describe('chunking', () => {
         test('returns single chunk for small content', () => {
-          const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG);
+          const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG, indexState);
 
           expect(response.content.length).toBe(1);
           expect(response.content[0].text).not.toContain('MORE CHUNKS REQUIRED');
@@ -147,7 +170,8 @@ describe('MCP Server Integration', () => {
         test('splits large content into multiple chunks', () => {
           const response = handleFetch(
             { sections: ['§LARGE.1', '§LARGE.2', '§LARGE.3'] },
-            SMALL_CHUNK_CONFIG
+            SMALL_CHUNK_CONFIG,
+            smallChunkIndexState
           );
 
           expect(response.content.length).toBeGreaterThan(1);
@@ -161,7 +185,8 @@ describe('MCP Server Integration', () => {
           // First request to get initial chunk
           const firstResponse = handleFetch(
             { sections: ['§LARGE.1', '§LARGE.2', '§LARGE.3'] },
-            SMALL_CHUNK_CONFIG
+            SMALL_CHUNK_CONFIG,
+            smallChunkIndexState
           );
 
           expect(firstResponse.content.length).toBeGreaterThan(1);
@@ -178,7 +203,8 @@ describe('MCP Server Integration', () => {
               sections: ['§LARGE.1', '§LARGE.2', '§LARGE.3'],
               continuation: continuationToken,
             },
-            SMALL_CHUNK_CONFIG
+            SMALL_CHUNK_CONFIG,
+            smallChunkIndexState
           );
 
           expect(secondResponse.content).toBeDefined();
@@ -193,13 +219,14 @@ describe('MCP Server Integration', () => {
                 sections: ['§TEST.1'],
                 continuation: 'chunk:999',
               },
-              TEST_CONFIG
+              TEST_CONFIG,
+              indexState
             );
           }).toThrow('Invalid continuation token');
         });
 
         test('last chunk has no continuation message', () => {
-          const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG);
+          const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG, indexState);
 
           const hasMoreMessage = response.content.some((c) =>
             c.text.includes('MORE CHUNKS REQUIRED')
@@ -212,7 +239,11 @@ describe('MCP Server Integration', () => {
 
     describe('handleResolveReferences', () => {
       test('resolves single section location', () => {
-        const response = handleResolveReferences({ sections: ['§TEST.1'] }, TEST_CONFIG);
+        const response = handleResolveReferences(
+          { sections: ['§TEST.1'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const result = JSON.parse(response.content[0].text);
         expect(result['policy-test.md']).toBeDefined();
@@ -222,7 +253,8 @@ describe('MCP Server Integration', () => {
       test('resolves multiple sections from same file', () => {
         const response = handleResolveReferences(
           { sections: ['§TEST.1', '§TEST.2', '§TEST.3'] },
-          TEST_CONFIG
+          TEST_CONFIG,
+          indexState
         );
 
         const result = JSON.parse(response.content[0].text);
@@ -233,7 +265,8 @@ describe('MCP Server Integration', () => {
       test('groups sections by file', () => {
         const response = handleResolveReferences(
           { sections: ['§APP.7', '§SYS.5', '§META.1'] },
-          TEST_CONFIG
+          TEST_CONFIG,
+          indexState
         );
 
         const result = JSON.parse(response.content[0].text);
@@ -243,7 +276,11 @@ describe('MCP Server Integration', () => {
       });
 
       test('expands ranges before resolving', () => {
-        const response = handleResolveReferences({ sections: ['§APP.4.1-3'] }, TEST_CONFIG);
+        const response = handleResolveReferences(
+          { sections: ['§APP.4.1-3'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const result = JSON.parse(response.content[0].text);
         expect(result['policy-app.md']).toContain('§APP.4.1');
@@ -252,7 +289,11 @@ describe('MCP Server Integration', () => {
       });
 
       test('includes recursively resolved references', () => {
-        const response = handleResolveReferences({ sections: ['§TEST.1'] }, TEST_CONFIG);
+        const response = handleResolveReferences(
+          { sections: ['§TEST.1'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const result = JSON.parse(response.content[0].text);
         const allSections = Object.values(result).flat();
@@ -264,7 +305,8 @@ describe('MCP Server Integration', () => {
       test('sorts sections within each file', () => {
         const response = handleResolveReferences(
           { sections: ['§TEST.3', '§TEST.1', '§TEST.2'] },
-          TEST_CONFIG
+          TEST_CONFIG,
+          indexState
         );
 
         const result = JSON.parse(response.content[0].text);
@@ -283,13 +325,13 @@ describe('MCP Server Integration', () => {
 
       test('throws error for empty sections array', () => {
         expect(() => {
-          handleResolveReferences({ sections: [] }, TEST_CONFIG);
+          handleResolveReferences({ sections: [] }, TEST_CONFIG, indexState);
         }).toThrow('sections parameter must be a non-empty array');
       });
 
       test('throws error for non-array sections parameter', () => {
         expect(() => {
-          handleResolveReferences({ sections: '§TEST.1' }, TEST_CONFIG);
+          handleResolveReferences({ sections: '§TEST.1' }, TEST_CONFIG, indexState);
         }).toThrow('Invalid arguments: expected { sections: string[]');
       });
     });
@@ -357,7 +399,8 @@ describe('MCP Server Integration', () => {
       test('validates existing references as valid', () => {
         const response = handleValidateReferences(
           { references: ['§TEST.1', '§APP.7', '§META.1'] },
-          TEST_CONFIG
+          TEST_CONFIG,
+          indexState
         );
 
         const result = JSON.parse(response.content[0].text);
@@ -369,7 +412,8 @@ describe('MCP Server Integration', () => {
       test('detects invalid references', () => {
         const response = handleValidateReferences(
           { references: ['§TEST.1', '§TEST.999', '§APP.7'] },
-          TEST_CONFIG
+          TEST_CONFIG,
+          indexState
         );
 
         const result = JSON.parse(response.content[0].text);
@@ -379,7 +423,11 @@ describe('MCP Server Integration', () => {
       });
 
       test('validates ranges by expanding them first', () => {
-        const response = handleValidateReferences({ references: ['§APP.4.1-3'] }, TEST_CONFIG);
+        const response = handleValidateReferences(
+          { references: ['§APP.4.1-3'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const result = JSON.parse(response.content[0].text);
         expect(result.valid).toBe(true);
@@ -387,17 +435,12 @@ describe('MCP Server Integration', () => {
       });
 
       test('detects duplicate sections across files', () => {
-        // Use config that includes duplicate test files
-        const dupConfig: ServerConfig = {
-          ...TEST_CONFIG,
-          stems: {
-            ...TEST_CONFIG.stems,
-            DUP: 'policy-duplicate1',
-          },
-        };
-
         // DUP.1 appears in both policy-duplicate1.md and policy-duplicate2.md
-        const response = handleValidateReferences({ references: ['§DUP.1'] }, dupConfig);
+        const response = handleValidateReferences(
+          { references: ['§DUP.1'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const result = JSON.parse(response.content[0].text);
         // May report duplicate issues in details
@@ -405,7 +448,11 @@ describe('MCP Server Integration', () => {
       });
 
       test('includes error details for invalid references', () => {
-        const response = handleValidateReferences({ references: ['§TEST.999'] }, TEST_CONFIG);
+        const response = handleValidateReferences(
+          { references: ['§TEST.999'] },
+          TEST_CONFIG,
+          indexState
+        );
 
         const result = JSON.parse(response.content[0].text);
         expect(result.valid).toBe(false);
@@ -416,20 +463,20 @@ describe('MCP Server Integration', () => {
 
       test('throws error for empty references array', () => {
         expect(() => {
-          handleValidateReferences({ references: [] }, TEST_CONFIG);
+          handleValidateReferences({ references: [] }, TEST_CONFIG, indexState);
         }).toThrow('references parameter must be a non-empty array');
       });
 
       test('throws error for non-array references parameter', () => {
         expect(() => {
-          handleValidateReferences({ references: '§TEST.1' }, TEST_CONFIG);
+          handleValidateReferences({ references: '§TEST.1' }, TEST_CONFIG, indexState);
         }).toThrow('Invalid arguments: expected { references: string[]');
       });
     });
 
     describe('handleListSources', () => {
       test('returns formatted list of policy sources', () => {
-        const response = handleListSources({}, TEST_CONFIG);
+        const response = handleListSources({}, TEST_CONFIG, indexState);
 
         expect(response.content).toBeDefined();
         expect(response.content[0].type).toBe('text');
@@ -439,26 +486,28 @@ describe('MCP Server Integration', () => {
         expect(text).toContain('Section Format');
       });
 
-      test('includes all configured prefixes', () => {
-        const response = handleListSources({}, TEST_CONFIG);
+      test('includes configured files list', () => {
+        const response = handleListSources({}, TEST_CONFIG, indexState);
         const text = response.content[0].text;
 
-        for (const prefix of Object.keys(TEST_CONFIG.stems)) {
-          expect(text).toContain(prefix);
-        }
+        // Check that policy files are listed
+        expect(text).toContain('policy-test.md');
+        expect(text).toContain('policy-app.md');
       });
 
-      test('includes file stems for each prefix', () => {
-        const response = handleListSources({}, TEST_CONFIG);
+      test('includes index statistics', () => {
+        const response = handleListSources({}, TEST_CONFIG, indexState);
         const text = response.content[0].text;
 
-        for (const stem of Object.values(TEST_CONFIG.stems)) {
-          expect(text).toContain(stem);
-        }
+        expect(text).toContain('Index Statistics');
+        expect(text).toContain('Files indexed:');
+        expect(text).toContain('Sections indexed:');
+        expect(text).toContain('Duplicate sections:');
+        expect(text).toContain('Last indexed:');
       });
 
       test('includes usage examples', () => {
-        const response = handleListSources({}, TEST_CONFIG);
+        const response = handleListSources({}, TEST_CONFIG, indexState);
         const text = response.content[0].text;
 
         expect(text).toContain('Examples');
@@ -468,7 +517,7 @@ describe('MCP Server Integration', () => {
       });
 
       test('documents section notation format', () => {
-        const response = handleListSources({}, TEST_CONFIG);
+        const response = handleListSources({}, TEST_CONFIG, indexState);
         const text = response.content[0].text;
 
         expect(text).toContain('§');
@@ -663,21 +712,21 @@ ${'Additional content. '.repeat(200)}`;
 
   describe('Edge Cases', () => {
     test('handles subsection references correctly', () => {
-      const response = handleFetch({ sections: ['§META.2.1'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§META.2.1'] }, TEST_CONFIG, indexState);
 
       expect(response.content[0].text).toContain('§META.2.1');
       expect(response.content[0].text).toContain('Meta Subsection');
     });
 
     test('handles deeply nested subsections', () => {
-      const response = handleFetch({ sections: ['§SUB.1.2.1'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§SUB.1.2.1'] }, TEST_CONFIG, indexState);
 
       expect(response.content[0].text).toContain('§SUB.1.2.1');
       expect(response.content[0].text).toContain('Deeply Nested');
     });
 
     test('handles empty section content', () => {
-      const response = handleFetch({ sections: ['§APP.8'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§APP.8'] }, TEST_CONFIG, indexState);
 
       expect(response.content[0].text).toContain('§APP.8');
     });
@@ -685,7 +734,8 @@ ${'Additional content. '.repeat(200)}`;
     test('handles mixed notation types in single request', () => {
       const response = handleFetch(
         { sections: ['§TEST.1', '§APP.4.1-3', '§META.2.1'] },
-        TEST_CONFIG
+        TEST_CONFIG,
+        indexState
       );
 
       const text = response.content[0].text;
@@ -695,7 +745,7 @@ ${'Additional content. '.repeat(200)}`;
     });
 
     test('deduplicates parent-child sections', () => {
-      const response = handleFetch({ sections: ['§APP.4', '§APP.4.1'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§APP.4', '§APP.4.1'] }, TEST_CONFIG, indexState);
 
       // APP.4 should include APP.4.1 content, so no duplication
       const text = response.content[0].text;
@@ -708,7 +758,7 @@ ${'Additional content. '.repeat(200)}`;
     test('handles circular reference chains', () => {
       // TEST.1 references TEST.2, which references TEST.2.2,
       // which references APP.7, which references TEST.1
-      const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG, indexState);
 
       // Should not infinite loop
       expect(response.content).toBeDefined();
@@ -716,7 +766,7 @@ ${'Additional content. '.repeat(200)}`;
     });
 
     test('handles sections with special characters in content', () => {
-      const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§TEST.1'] }, TEST_CONFIG, indexState);
 
       expect(response.content[0].text).toBeDefined();
       expect(response.content[0].text.length).toBeGreaterThan(0);
@@ -724,7 +774,7 @@ ${'Additional content. '.repeat(200)}`;
 
     test('handles section notation with hyphens in prefix', () => {
       // APP-HOOK should extract base prefix APP and find policy-app-hooks.md
-      const response = handleFetch({ sections: ['§APP-HOOK.1'] }, TEST_CONFIG);
+      const response = handleFetch({ sections: ['§APP-HOOK.1'] }, TEST_CONFIG, indexState);
 
       expect(response.content[0].text).toContain('§APP-HOOK.1');
       expect(response.content[0].text).toContain('First Hook Section');

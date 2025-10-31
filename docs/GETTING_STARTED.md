@@ -1,14 +1,14 @@
 # Getting Started with MCP Policy Server
 
-This guide walks you through setting up the Policy Server from scratch. You'll create policy files, configure the server, and write your first agent that uses policy references.
+This guide walks you through setting up the Policy Server from scratch. You'll create policy files, configure the server, and write your first subagent that uses policy references.
 
-**Note:** This server is best suited for AI tools that utilize subagents or prompt libraries (commands), such as Claude Code with its agent system or custom slash commands. The § notation works most effectively when agents can programmatically fetch policy sections via MCP tools.
+**Note:** Designed for Claude Code subagents and commands (slash commands). The § notation works most effectively when subagents can programmatically fetch policy sections via MCP tools.
 
 ## Step 1: Install the Server
 
 See [INSTALLATION.md](INSTALLATION.md) for prerequisites and complete installation instructions. Once installed, continue with this guide to create your policies.
 
-## Step 2: Write Policy Files
+## Step 2: Create Policy Files
 
 Create your first policy file with section markers.
 
@@ -66,20 +66,138 @@ Include request IDs for traceability.
 - Use format `## {§PREFIX.N}` for section markers (see [Policy Reference](POLICY_REFERENCE.md) for complete syntax)
 - Sections can reference other sections (§CODE.5 referenced from §CODE.2)
 
-## Step 3: Create Configuration File
+## Step 3: Configure Policy Files
 
-Create `policies.json` in your policies directory (created during installation) to map prefixes to policy files:
+The server requires a configuration specifying which policy files to load. You can configure this in three ways:
 
-**policies/policies.json:**
+### Option 1: Direct Glob Pattern (Recommended - Simplest)
+
+Set `MCP_POLICY_CONFIG` environment variable to a glob pattern in your `.mcp.json` file:
+
+**Linux/macOS - .mcp.json in project root:**
 ```json
 {
-  "prefixes": {
-    "CODE": "policy-coding"
+  "mcpServers": {
+    "policy-server": {
+      "command": "npx",
+      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "env": {
+        "MCP_POLICY_CONFIG": "./policies/*.md"
+      }
+    }
   }
 }
 ```
 
-This maps `§CODE.1` to section 1 in `policy-coding.md`. See [Configuration Reference](./CONFIGURATION_REFERENCE.md) for advanced configuration options.
+**Windows - .mcp.json in project root:**
+```json
+{
+  "mcpServers": {
+    "policy-server": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "env": {
+        "MCP_POLICY_CONFIG": "./policies/*.md"
+      }
+    }
+  }
+}
+```
+
+**Supported glob patterns:**
+- `./policies/*.md` - All .md files in directory
+- `./policies/policy-*.md` - Files matching pattern
+- `./policies/**/*.md` - Recursive directory search
+- `./{policies,docs}/*.md` - Brace expansion for multiple directories
+
+### Option 2: JSON Configuration File
+
+Create a `policies.json` file listing your policy files:
+
+**policies/policies.json:**
+```json
+{
+  "files": [
+    "./policy-*.md"
+  ]
+}
+```
+
+Set `MCP_POLICY_CONFIG` to the JSON file path (or omit to use default `./policies.json`):
+
+**Linux/macOS:**
+```json
+{
+  "mcpServers": {
+    "policy-server": {
+      "command": "npx",
+      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "env": {
+        "MCP_POLICY_CONFIG": "./policies/policies.json"
+      }
+    }
+  }
+}
+```
+
+**Windows:**
+```json
+{
+  "mcpServers": {
+    "policy-server": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "env": {
+        "MCP_POLICY_CONFIG": "./policies/policies.json"
+      }
+    }
+  }
+}
+```
+
+**If `MCP_POLICY_CONFIG` is not set**, the server loads `./policies.json` from the working directory.
+
+### Option 3: Inline JSON Configuration
+
+Pass the configuration directly as a JSON string:
+
+**Linux/macOS:**
+```json
+{
+  "mcpServers": {
+    "policy-server": {
+      "command": "npx",
+      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "env": {
+        "MCP_POLICY_CONFIG": "{\"files\": [\"./policies/*.md\"]}"
+      }
+    }
+  }
+}
+```
+
+**Windows:**
+```json
+{
+  "mcpServers": {
+    "policy-server": {
+      "command": "cmd",
+      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "env": {
+        "MCP_POLICY_CONFIG": "{\"files\": [\"./policies/*.md\"]}"
+      }
+    }
+  }
+}
+```
+
+### Path Resolution Rules
+
+- **File-based configuration** (Option 2): Relative paths resolve from the directory containing `policies.json`
+- **Environment variable configuration** (Options 1 and 3): Relative paths resolve from the working directory (where the server process starts)
+- **Absolute paths**: Always use absolute paths in MCP client configurations to avoid ambiguity
+
+See [Configuration Reference](./CONFIGURATION_REFERENCE.md) for complete configuration options and examples.
 
 ## Step 4: Test the Server
 
@@ -89,13 +207,13 @@ See [README.md](../README.md#available-mcp-tools) for complete tool documentatio
 Use the MCP list_sources tool to show me available policies
 ```
 
-You should see your configured prefixes and policy files.
+You should see your configured policy files and available section prefixes.
 
-## Step 5: Create an Agent That Uses Policies
+## Step 5: Create a Subagent That Uses Policies
 
-Create an agent file that references your policies.
+Create a subagent file that references your policies.
 
-**Key principle:** Agents must be explicitly instructed to call `mcp__policy-server__fetch_policies` with the sections they need. Simply mentioning § references is not enough - agents need clear instructions to fetch them.
+**Key principle:** Subagents must be explicitly instructed to call `mcp__policy-server__fetch_policies` with the sections they need. Simply mentioning § references is not enough - subagents need clear instructions to fetch them.
 
 **.claude/agents/code-reviewer.md:**
 ```markdown
@@ -136,23 +254,54 @@ Always fetch policies FIRST before reviewing. The § references in step 1 are pl
 Cite specific policy sections (§CODE.N) when noting violations.
 ```
 
-## Step 6: Use the Agent
+## Step 6: Use the Subagent
 
-Invoke your code review agent with a code sample:
+Invoke your code review subagent with a code sample:
 
 ```
 @agent-code-reviewer review @path/to/code-file.js:
 ```
 
 **What happens:**
-1. Agent reads its instructions
-2. Agent sees references to §CODE.1, §CODE.2, §CODE.3
-3. Agent calls MCP `fetch_policies` tool with those sections
+1. Subagent reads its instructions
+2. Subagent sees references to §CODE.1, §CODE.2, §CODE.3
+3. Subagent calls MCP `mcp__policy-server__fetch_policies` tool with those sections
 4. Server returns requested sections PLUS §CODE.5 (referenced from §CODE.2)
-5. Agent reviews code against current standards
-6. Agent provides feedback with specific policy citations
+5. Subagent reviews code against current standards
+6. Subagent provides feedback with specific policy citations
 
-## Step 7: Expand Your Policies
+## Step 7: Automatic Policy Updates
+
+Policy files are watched automatically for changes. Updates appear on the next tool call without restarting the server.
+
+**How it works:**
+1. Server monitors all configured policy files for changes
+2. When a file changes, the section index is marked stale
+3. On the next MCP tool call, the index rebuilds automatically
+4. Changes appear within seconds after saving your policy files
+
+**What triggers updates:**
+- File content changes (save/modify)
+- File deletion
+- File rename
+
+**No restart needed:**
+```markdown
+# Edit your policy file
+## {§CODE.1}
+### General Principles
+
+Updated content here...  # <-- Save the file
+
+# Next tool call automatically sees the changes
+```
+
+**Limitations:**
+- New files matching existing glob patterns require server restart
+- Configuration changes (adding new patterns) require server restart
+- Files on network drives or WSL may have delayed updates
+
+## Step 8: Expand Your Policies
 
 Add more policy files as needed:
 
@@ -179,18 +328,22 @@ All endpoints require authentication except /health and /metrics:
 - Return 401 for invalid tokens, 403 for insufficient permissions
 ```
 
-Update `policies.json` to add the API prefix. See [Configuration Reference](CONFIGURATION_REFERENCE.md#examples) for advanced examples:
+If using a glob pattern, the new file is automatically included (no configuration changes needed):
 
+**Configuration:**
 ```json
 {
-  "prefixes": {
-    "CODE": "policy-coding",
-    "API": "policy-api"
-  }
+  "files": [
+    "./policies/policy-*.md"
+  ]
 }
 ```
 
-Create agents that reference API policies:
+The pattern `./policies/policy-*.md` matches both `policy-coding.md` and `policy-api.md`. Restart the server to detect the new file.
+
+See [Configuration Reference](CONFIGURATION_REFERENCE.md#examples) for advanced examples.
+
+Create subagents that reference API policies:
 
 **.claude/agents/api-designer.md:**
 ```markdown
@@ -215,203 +368,34 @@ See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and 
 
 ## Troubleshooting
 
-### Server Won't Start
+### Configuration Issues
+- **Server won't start**: Check `MCP_POLICY_CONFIG` is set and points to valid file/pattern
+- **No files found**: Verify glob pattern matches `.md` files
+- **Windows paths**: Use forward slashes: `C:/path/to/policies.json`
 
-**Error:** "MCP_POLICY_CONFIG environment variable must be set"
+### Section Issues
+- **Section not found**: Check section exists and format is `## {§CODE.1}`
+- **Prefix not recognized**: Verify policy file is in configured files list
+- **Duplicates**: Same section ID in multiple files - remove from one
 
-**Solution:**
-- Verify `env.MCP_POLICY_CONFIG` is present in configuration
-- Use absolute path (not `~/` or relative paths)
-- Point to `policies.json` file itself, not the directory
+### Subagent Issues
+- **Subagent ignoring policies**: Add explicit tool call instructions (see Step 5)
+- **Stale content**: Edit policy file to trigger reload, or restart server
 
-**Error:** "Policy configuration not found"
+## Tips
 
-**Solution:**
-- Verify file exists at the specified path
-- Check file permissions (must be readable)
-- Ensure no typos in path
-
-### Server Not Appearing in MCP List
-
-**Solution:**
-- Restart your AI client after configuration changes
-- Check configuration file syntax (valid JSON)
-- Verify `command` and `args` are correct for your installation method
-
-### Windows Path Issues
-
-**Solution:**
-- Always use forward slashes in JSON configuration files
-- Example: `"MCP_POLICY_CONFIG": "C:/my-project/policies/policies.json"`
-- Do not use backslashes (they require escaping)
-
-### Section Not Found
-
-**Error:** "Section §CODE.99 not found in policy-coding.md"
-
-**Solution:**
-- Verify section exists in policy file
-- Check section marker format: `## {§CODE.99}` (with curly braces, see [Policy Reference](POLICY_REFERENCE.md))
-- Ensure prefix matches (case-sensitive)
-- Use `list_sources` tool to see available sections
-
-### Prefix Not Recognized
-
-**Error:** "Unknown prefix: MISSING"
-
-**Solution:**
-- Add prefix to `policies.json` prefixes object (see [Configuration Reference](CONFIGURATION_REFERENCE.md) for details)
-- Create corresponding policy file
-- Restart your AI client
-
-### Agent Not Fetching Policies
-
-**Symptom:** Agent responds without consulting policies
-
-**Solution:**
-
-Agents must be explicitly instructed to call the tool. Add clear, actionable instructions:
-
-```markdown
-1. **Fetch standards** by calling `mcp__policy-server__fetch_policies` with:
-   ```json
-   {"sections": ["§CODE.1", "§CODE.2", "§CODE.3"]}
-   ```
-
-2. Review code against fetched standards
-```
-
-**What doesn't work:**
-- ❌ "Follow §CODE.1 standards" (too vague)
-- ❌ "Reference §CODE.1-3" (doesn't tell agent to fetch)
-- ❌ Listing § references without explaining how to fetch them
-
-**What works:**
-- ✅ "Call mcp__policy-server__fetch_policies with {"sections": ["§CODE.1"]}"
-- ✅ Step-by-step process that includes the tool call
-- ✅ JSON example showing exact tool invocation
-
-**Note:** While subagents inherit MCP tools automatically (when `tools` field is omitted), they may not receive MCP server instructions. Explicit tool usage instructions in agent prompts ensure reliable behavior across different MCP clients.
-
-### Stale Policy Content
-
-**Symptom:** Agent using outdated policy content
-
-**Solution:**
-- Policies are read from files on each fetch
-- Simply update markdown files and save
-- No server restart needed
-- Clear agent context/start new conversation if needed
-
-## Tips & Tricks
-
-### Let Claude Code Build Policy Files for You
-
-Instead of manually writing policy files, use Claude Code to generate them based on your requirements:
-
-```
-Review the codebase and create a policy file for our established database patterns
-at policies/policy-database.md. Use the § notation format from @docs/POLICY_REFERENCE.md. 
-
-Include sections for:
-- Connection pooling
-- Query optimization
-- Migration procedures
-- Backup requirements
-```
-
-Claude Code will read the POLICY_REFERENCE.md, understand the § notation format, and generate a properly structured policy file with correct section markers.
-
-### Maintain Policy References with MCP Tools
-
-Create a maintenance agent that uses the server's reference tools to keep your agents up to date:
-
-**.claude/agents/policy-maintainer.md:**
-```markdown
----
-name: policy-maintainer
-description: Maintains and validates policy references in agent files
-tools: mcp__policy-server__extract_references, mcp__policy-server__validate_references, Read, Edit, Glob
-model: inherit
----
-
-You maintain policy references across agent files.
-
-## Process
-
-When asked to audit or update agent policy references:
-
-1. **Find agent files** using Glob tool (`**/.claude/agents/*.md`)
-
-2. **Extract references** from each agent using `extract_references` tool
-   - Returns array of § references found in the file
-
-3. **Validate references** using `validate_references` tool
-   - Checks if sections exist in policy files
-   - Reports invalid or missing sections
-
-4. **Update agents** with corrections:
-   - Fix invalid references
-   - Add missing required sections
-   - Remove deprecated sections
-
-5. **Report changes** with specific file:line references
-
-## Common Tasks
-
-**Audit all agents:**
-- Extract references from all agent files
-- Validate each reference
-- Report invalid or outdated references
-
-**Update agent references:**
-- When policies change, update affected agents
-- Ensure agents reference current section numbers
-- Add new policy sections as needed
-```
-
-**Example usage:**
-```
-@agent-policy-maintainer audit all agents and report any invalid policy references
-```
-
-This agent will:
-- Scan all agent files for § references
-- Validate each reference against your policy files
-- Report which agents need updates
-- Suggest corrections
-
-**Batch update example:**
-```
-@agent-policy-maintainer we renamed §CODE.5 to §CODE.6, update all agents
-```
-
-### Combine Tools for Workflow Automation
-
-Use the MCP tools together for powerful workflows:
-
-**Find all files referencing a section:**
-```
-Use extract_references to find all agents that reference §API.1
-```
-
-**Validate before deployment:**
-```
-Use validate_references to check all § references in @.claude/agents/security-reviewer.md
-```
-
-**Discover policy dependencies:**
-```
-Use fetch_policies for §CODE.2 and show me what other sections it references
-```
+- Use Claude Code to generate policy files from codebase patterns
+- Use `mcp__policy-server__validate_references` tool to check subagent policy references
+- Use `mcp__policy-server__extract_references` to find which subagents use specific policies
 
 ## Next Steps
 
-- **Add more policies**: Create additional policy files for different domains
+- **Add more policies**: Create additional policy files matching your glob pattern
 - **Organize with prefixes**: Use hyphenated prefixes (CODE-JS, CODE-PY) for language-specific standards
-- **Create specialized agents**: Build agents for specific tasks (security review, performance review)
+- **Create specialized subagents**: Build subagents for specific tasks (security review, performance review)
 - **Cross-reference policies**: Link related sections with § notation for automatic dependency resolution
-- **Validate references**: Use `validate_references` tool before deploying agents to production
+- **Validate references**: Use `mcp__policy-server__validate_references` tool before deploying subagents to production
+- **Monitor updates**: Check server logs for `[WATCH]` and `[INDEX]` messages to see automatic updates in action
 
 ## Reference
 

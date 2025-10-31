@@ -3,6 +3,8 @@
  * Defines interfaces, types, and error classes used throughout the system
  */
 
+import * as fs from 'fs';
+
 /**
  * Parsed section notation without file resolution
  *
@@ -78,19 +80,97 @@ export interface ResolvedSection extends ParsedSection {
 }
 
 /**
- * Section notation type with § prefix
- *
- * Template literal type enforcing § prefix followed by uppercase
- * prefix and numeric section identifier.
- *
- * @example
- * ```typescript
- * const valid: SectionNotation = '§APP.7';     // Valid
- * const valid2: SectionNotation = '§META.2.3'; // Valid
- * const invalid: SectionNotation = 'APP.7';    // Type error - missing §
- * ```
+ * Section notation format: §PREFIX.NUMBER (whole sections) or §PREFIX.NUMBER.SUBSECTION[.SUBSECTION...] (subsections)
+ * Examples: "§APP.7" (whole section), "§APP.7.1" (subsection), "§APP.7.1.2.3.4" (deeply nested subsection)
+ * Supports arbitrary nesting depth
+ * Type is string (not template literal) for efficient Map key usage in indexing
  */
-export type SectionNotation = `§${string}.${string}`;
+export type SectionNotation = string;
+
+/**
+ * Section index with fast lookup and duplicate detection
+ *
+ * In-memory index built at startup and refreshed on file changes.
+ * Provides O(1) section lookups and comprehensive duplicate tracking.
+ */
+export interface SectionIndex {
+  /**
+   * Fast lookup: section ID → absolute file path
+   * Duplicates are excluded from this map (see duplicates map below)
+   * Example: §APP.7 → "/absolute/path/to/policy-application.md"
+   */
+  sectionMap: Map<SectionNotation, string>;
+
+  /**
+   * Duplicate detection: section ID → all absolute file paths containing it
+   * When fetch_policies encounters duplicate, returns error listing all files
+   * Example: §APP.7 → ["/path/file1.md", "/path/file2.md"]
+   */
+  duplicates: Map<SectionNotation, string[]>;
+
+  /**
+   * File modification times for rebuild optimization
+   * Example: "/absolute/path/to/policy-application.md" → mtime
+   */
+  fileMtimes: Map<string, Date>;
+
+  /**
+   * Cached per-file section lists for mtime optimization
+   * Stores extracted sections for each file to avoid re-parsing unchanged files
+   * Example: "/absolute/path/to/policy-application.md" → ["§APP.1", "§APP.2", ...]
+   */
+  fileSections: Map<string, SectionNotation[]>;
+
+  /**
+   * File sizes for robust change detection
+   * Used alongside mtime to detect changes on low-precision filesystems
+   * Example: "/absolute/path/to/policy-application.md" → 12345
+   */
+  fileSizes: Map<string, number>;
+
+  /**
+   * Timestamp of last index build
+   */
+  lastIndexed: Date;
+
+  /**
+   * Number of files indexed (includes files with zero sections)
+   */
+  fileCount: number;
+
+  /**
+   * Number of sections indexed
+   */
+  sectionCount: number;
+}
+
+/**
+ * Index state with staleness tracking and file watchers
+ *
+ * Manages the section index lifecycle including lazy rebuilds
+ * and file watching for automatic updates.
+ */
+export interface IndexState {
+  /**
+   * Current section index
+   */
+  index: SectionIndex;
+
+  /**
+   * Whether index is stale and needs rebuild
+   */
+  stale: boolean;
+
+  /**
+   * Prevents concurrent rebuilds if async file I/O used
+   */
+  rebuilding: boolean;
+
+  /**
+   * File watchers (one watcher per file, created at startup, closed at shutdown)
+   */
+  watchers: fs.FSWatcher[];
+}
 
 /**
  * Gathered section with all required fields

@@ -23,13 +23,15 @@ import {
   handleInspectContext,
 } from './handlers.js';
 import { loadConfig, validateConfiguration, ServerConfig } from './config.js';
-import { validateSectionUniqueness, formatDuplicateErrors } from './validator.js';
+import { initializeIndexState, closeIndexState } from './indexer.js';
+import { IndexState } from './types.js';
+import packageJson from '../package.json';
 
 // Create server instance
 const server = new Server(
   {
     name: 'policy-server',
-    version: '0.1.0',
+    version: packageJson.version,
   },
   {
     capabilities: {
@@ -148,11 +150,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 });
 
 /**
- * Setup request handlers with configuration
+ * Setup request handlers with configuration and index state
  *
- * Creates closure over config to avoid global mutable state
+ * Creates closure over config and indexState to avoid global mutable state
  */
-function setupRequestHandlers(config: ServerConfig): void {
+function setupRequestHandlers(config: ServerConfig, indexState: IndexState): void {
   /**
    * Handle tool calls
    */
@@ -162,19 +164,19 @@ function setupRequestHandlers(config: ServerConfig): void {
     try {
       switch (name) {
         case 'fetch_policies':
-          return handleFetch(args, config);
+          return handleFetch(args, config, indexState);
 
         case 'resolve_references':
-          return handleResolveReferences(args, config);
+          return handleResolveReferences(args, config, indexState);
 
         case 'extract_references':
           return handleExtractReferences(args, config);
 
         case 'validate_references':
-          return handleValidateReferences(args, config);
+          return handleValidateReferences(args, config, indexState);
 
         case 'list_sources':
-          return handleListSources(args, config);
+          return handleListSources(args, config, indexState);
 
         case 'inspect_context':
           return handleInspectContext(args, request);
@@ -197,8 +199,18 @@ function setupRequestHandlers(config: ServerConfig): void {
     const { name } = request.params;
 
     if (name === 'auto-fetch') {
-      const prefixDocs = Object.entries(config.stems)
-        .map(([prefix, stem]) => `- **§${prefix}.N** - ${stem}.md Section N`)
+      // Extract unique prefixes from indexed sections
+      const prefixes = new Set<string>();
+      for (const section of indexState.index.sectionMap.keys()) {
+        const match = section.match(/^§([A-Z-]+)\./);
+        if (match) {
+          prefixes.add(match[1]);
+        }
+      }
+
+      const prefixDocs = Array.from(prefixes)
+        .sort()
+        .map((prefix) => `- **§${prefix}.N** - Section N from policy files`)
         .join('\n');
 
       return {
@@ -269,20 +281,28 @@ async function main(): Promise<void> {
 
     console.error('Policy server configuration loaded:');
     console.error(`  Base directory: ${config.baseDir}`);
-    console.error(`  Prefixes: ${Object.keys(config.stems).join(', ')}`);
+    console.error(`  Files: ${config.files.length} configured`);
 
-    // Validate section uniqueness at startup
-    const validationResult = validateSectionUniqueness(config, config.baseDir);
+    // Initialize index with file watching
+    console.error('[STARTUP] Initializing section index...');
+    const indexState = initializeIndexState(config);
+    console.error('[STARTUP] Index initialized successfully');
 
-    if (!validationResult.valid) {
-      console.error('[WARN] Policy section validation failed:');
-      console.error(formatDuplicateErrors(validationResult.errors ?? []));
-    } else {
-      console.error('Policy section validation: PASSED');
-    }
+    // Setup signal handlers for clean shutdown
+    process.on('SIGINT', () => {
+      console.error('[SHUTDOWN] Received SIGINT, closing watchers...');
+      closeIndexState(indexState);
+      process.exit(0);
+    });
 
-    // Setup request handlers with config closure
-    setupRequestHandlers(config);
+    process.on('SIGTERM', () => {
+      console.error('[SHUTDOWN] Received SIGTERM, closing watchers...');
+      closeIndexState(indexState);
+      process.exit(0);
+    });
+
+    // Setup request handlers with config and indexState closure
+    setupRequestHandlers(config, indexState);
 
     const transport = new StdioServerTransport();
     await server.connect(transport);

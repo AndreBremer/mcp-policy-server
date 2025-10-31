@@ -2,14 +2,14 @@
 
 This guide covers installing the Policy Documentation Server for use with MCP-compatible AI clients.
 
-**Best suited for AI tools utilizing subagents or prompt libraries (commands).** This server is designed to work with AI clients that support agent-based workflows. Tested with Claude Code (agents and slash commands).
+**Designed for Claude Code subagents and commands (slash commands).** May work with other MCP-compatible clients that support agent-based workflows.
 
 See [Policy Reference](POLICY_REFERENCE.md) for § notation syntax.
 
 ## Prerequisites
 
 - Node.js 18 or later
-- Claude Code (tested) or other MCP-compatible AI client with agent support
+- Claude Code (tested) or other MCP-compatible AI client with subagent support
 
 ## Installation Methods
 
@@ -57,7 +57,7 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
       "command": "npx",
       "args": ["-y", "@andrebremer/mcp-policy-server"],
       "env": {
-        "MCP_POLICY_CONFIG": "policies/policies.json"
+        "MCP_POLICY_CONFIG": "./policies/*.md"
       }
     }
   }
@@ -72,7 +72,7 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
       "command": "cmd",
       "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
       "env": {
-        "MCP_POLICY_CONFIG": "policies/policies.json"
+        "MCP_POLICY_CONFIG": "./policies/*.md"
       }
     }
   }
@@ -80,7 +80,8 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
 ```
 
 **Configuration Notes:**
-- `MCP_POLICY_CONFIG`: Path relative to the `.mcp.json` file location
+- `MCP_POLICY_CONFIG`: Glob pattern or path relative to the `.mcp.json` file location
+- Glob patterns recommended for simplicity (e.g., `./policies/*.md`)
 - Windows: Use forward slashes in paths (JSON compatible)
 - The `npx -y` command auto-installs the package on first use
 - Restart Claude Code after creating/modifying `.mcp.json`
@@ -127,7 +128,7 @@ Create `.mcp.json` at the root of your project (where your policies directory is
       "command": "node",
       "args": ["/absolute/path/to/mcp-policy-server/dist/index.js"],
       "env": {
-        "MCP_POLICY_CONFIG": "policies/policies.json"
+        "MCP_POLICY_CONFIG": "./policies/*.md"
       }
     }
   }
@@ -142,7 +143,7 @@ Create `.mcp.json` at the root of your project (where your policies directory is
       "command": "node",
       "args": ["/absolute/path/to/mcp-policy-server/dist/index.js"],
       "env": {
-        "MCP_POLICY_CONFIG": "policies/policies.json"
+        "MCP_POLICY_CONFIG": "./policies/*.md"
       }
     }
   }
@@ -163,7 +164,7 @@ After installation:
 1. **Create policy files** - See [Getting Started Guide](GETTING_STARTED.md) for step-by-step setup
 2. **Configure policies.json** - Map prefixes to policy files
 3. **Restart your AI client** - Load the new MCP server
-4. **Test the server** - Use `list_sources` tool to verify
+4. **Test the server** - Use `mcp__policy-server__list_sources` tool to verify
 
 For troubleshooting, see [Getting Started Guide](GETTING_STARTED.md#troubleshooting).
 

@@ -1,5 +1,26 @@
 # Release Notes
 
+## v0.2.0 (2025-10-30)
+
+### ⚠️ BREAKING CHANGES
+
+Configuration format changed from `stems` object to `files` array with glob pattern support. Manual migration required.
+
+- **Old:** `{"stems": {"APP": "policy-application"}}`
+- **New:** `{"files": ["./policies/*.md"]}` or `export MCP_POLICY_CONFIG="./policies/*.md"`
+
+See docs/CONFIGURATION_REFERENCE.md for migration guide.
+
+### Changes
+
+- Section indexing with O(1) lookups (replaced O(n) file scanning)
+- Automatic file watching with lazy refresh (policy changes appear on next tool call, no restart needed)
+- Glob pattern support for flexible file matching (`*`, `**`, `{a,b}`)
+- Three configuration formats: direct glob via env var, JSON file, inline JSON
+- Added fast-glob dependency
+
+---
+
 ## v0.1.1 (2025-10-25)
 
 ### Bug Fixes

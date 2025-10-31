@@ -92,54 +92,15 @@ Ranges expand to all sections between start and end (inclusive).
 
 ## Hyphenated Prefixes
 
-### Format
+Use hyphens to organize related sections:
 
-```
-§BASE-EXTENSION.N
-```
-
-**Components:**
-- `BASE` - Primary prefix (DOC, API, GUIDE)
-- `-` - Single hyphen separator
-- `EXTENSION` - Extension identifier (GUIDE, REST, CORE)
-- `.N` - Section numbers
-
-### Resolution Process
-
-The server extracts the base prefix and searches all matching files:
-
-1. Split on first hyphen (`APP-HOOK` → `APP`)
-2. Find stem in configuration (`APP` → `policy-application`)
-3. Search all files matching `{stem}.md` and `{stem}-*.md`
-4. All files merge into single namespace for that prefix
-
-**Important:** File names organize content for humans. Extensions are section identifiers, not file selectors. `§APP-HOOK.1` searches all `policy-application*.md` files.
-
-**Examples:**
-```
-§DOC-GUIDE.1 → Searches policy-documentation.md, policy-documentation-*.md
-§API-REST.2 → Searches policy-api.md, policy-api-*.md
-§GUIDE-QUICK.3 → Searches policy-guide.md, policy-guide-*.md
-```
-
-### Extension Examples
-
-**Organizing by concern:**
 ```markdown
-## {§DOC.1} Overview
-## {§DOC-GUIDE.1} Quick Start
-## {§DOC-API.1} API Reference
-
 ## {§API.1} General Guidelines
 ## {§API-REST.1} REST APIs
 ## {§API-GRAPHQL.1} GraphQL APIs
-
-## {§SYS.1} Core System
-## {§SYS-UTIL.1} Utilities
-## {§SYS-TEST.1} Testing
 ```
 
-**Note:** No need to add extensions to `policies.json`. They resolve automatically via base prefix extraction.
+Server searches all configured files for the section ID. No special configuration needed.
 
 ## Embedded References
 
@@ -245,7 +206,7 @@ Response: §APP.7, §META.1, §SYS.5
 
 ## Validation
 
-The `validate_references` tool checks format, prefix existence, section existence, and uniqueness.
+The `mcp__policy-server__validate_references` tool checks format, prefix existence, section existence, and uniqueness.
 
 **Valid response:**
 ```json
@@ -339,57 +300,6 @@ Number sections sequentially without gaps:
 §DOC.1, §DOC.5, §DOC.10    ❌ Gaps in numbering
 ```
 
-## Documentation with Examples
+## Code Blocks and Examples
 
-### Code Blocks
-
-Section markers in code blocks are preserved in extracted content but ignored during validation:
-
-```markdown
-## {§DOC.5} API Examples
-
-Here's an example section header format:
-
-\```markdown
-## {§EXAMPLE.1} Example Section
-Content goes here...
-\```
-
-Use inline code for references: `{§INLINE.1}`
-```
-
-**Validation behavior:**
-- Only `§DOC.5` is detected as a real section
-- `§EXAMPLE.1` and `§INLINE.1` are ignored (they're in code blocks)
-
-**Extraction behavior:**
-- All content is preserved including code blocks
-- Example markers remain in the extracted section
-- Agents see the full documentation with examples
-
-### Table of Contents
-
-TOC links are ignored during validation:
-
-```markdown
-## {§DOC.TOC} Table of Contents
-
-- [[#{§DOC.1} Overview]]
-- [[#{§DOC.2} Installation]]
-- [[#{§DOC.3} Configuration]]
-
-## {§DOC.1} Overview
-Actual section content...
-```
-
-**Validation behavior:**
-- Only actual section headers (`## {§DOC.1}`) are validated
-- TOC references (`[[#{§DOC.1} ...]]`) are ignored
-
-This allows policy files to include:
-- Example section formats in code blocks
-- References in inline code for demonstration
-- Table of contents with section links
-- YAML/JSON examples containing section markers
-
-All examples are preserved in extracted content but don't trigger duplicate section warnings.
+Section markers in code blocks are ignored during validation but preserved in extracted content. This allows you to include examples without triggering duplicate warnings.

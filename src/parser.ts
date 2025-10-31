@@ -244,6 +244,62 @@ function extractRange(lines: string[], startPattern: RegExp, stopPattern: RegExp
 }
 
 /**
+ * Detect code block ranges in content for exclusion from parsing
+ *
+ * Finds all fenced code block ranges (```...```) in content to exclude them
+ * from section detection or reference parsing. Handles proper fence length
+ * matching and unclosed blocks common in extracted sections.
+ *
+ * Opening fences can have language specifiers (```js, ````markdown).
+ * Closing fences should only be backticks without language specifiers.
+ *
+ * @param content - Text content to scan for code blocks
+ * @returns Array of {start, end} positions for each code block
+ *
+ * @example
+ * ```typescript
+ * const content = '```js\ncode\n```\ntext';
+ * const ranges = detectCodeBlockRanges(content);
+ * // Returns: [{start: 0, end: 15}]
+ * ```
+ */
+export function detectCodeBlockRanges(content: string): Array<{ start: number; end: number }> {
+  const codeBlockRanges: Array<{ start: number; end: number }> = [];
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+  let codeBlockStart = -1;
+  let currentPosition = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const backtickMatch = /^(`{3,})(\S*)/.exec(line);
+
+    if (backtickMatch) {
+      const hasLanguage = backtickMatch[2].length > 0;
+
+      if (!inCodeBlock) {
+        // Any fence can open a block (with or without language)
+        codeBlockStart = currentPosition;
+        inCodeBlock = true;
+      } else if (!hasLanguage) {
+        // Only fences WITHOUT language specifier can close
+        codeBlockRanges.push({
+          start: codeBlockStart,
+          end: currentPosition,
+        });
+        inCodeBlock = false;
+        codeBlockStart = -1;
+      }
+      // If inCodeBlock && hasLanguage: ignore (it's content inside the block, not a closer)
+    }
+
+    currentPosition += line.length + 1; // +1 for newline
+  }
+
+  return codeBlockRanges;
+}
+
+/**
  * Find all § references embedded in content
  *
  * Scans content for § notation and extracts all valid section references.
@@ -279,9 +335,7 @@ export function findEmbeddedReferences(content: string): SectionNotation[] {
   let cleanedContent = content;
 
   // Remove fenced code blocks with proper fence length matching
-  // Must match closing fence with same or more backticks as opening fence
   // Process from longest to shortest to handle nested fences correctly
-  // Pattern accounts for optional language identifier after opening fence
   // Also handles unclosed fenced blocks (common in extracted sections)
   for (let tickCount = 10; tickCount >= 3; tickCount--) {
     const ticks = '`'.repeat(tickCount);
