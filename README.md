@@ -69,7 +69,7 @@ Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server 
 
 ## Installation
 
-### Quick Start (npm)
+### Quick Start (claude mcp add)
 
 **Linux/macOS:**
 ```bash
@@ -79,7 +79,7 @@ claude mcp add --transport stdio policy-server \
   --scope project
 ```
 
-**Windows:** Use manual configuration (see [Installation Guide](docs/INSTALLATION.md))
+**Windows:** Use manual configuration (see below)
 
 ### Manual Configuration
 
