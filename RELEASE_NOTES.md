@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.2.1 (2025-10-31)
+
+### Bug Fixes
+
+- Fixed npx compatibility on Windows by adding scoped package name to bin entries
+- Package now registers both `@andrebremer/mcp-policy-server` and `mcp-policy-server` as executables
+- Resolves "is not recognized as an internal or external command" error when using npx on Windows
+
+---
+
 ## v0.2.0 (2025-10-30)
 
 ### ⚠️ BREAKING CHANGES
