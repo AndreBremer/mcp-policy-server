@@ -51,7 +51,7 @@ claude mcp add-json policy-server ('{' `
   --scope project
 ```
 
-### Option 2: Manual Configuration (Recommended for Windows)
+### Option 2: Manual Configuration
 
 #### Create .mcp.json in Your Project Root
 

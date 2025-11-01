@@ -177,6 +177,5 @@ Server resolves references recursively.
 
 - Use direct glob for simple cases
 - Use JSON file for complex patterns
-- Use absolute paths in production
 - Keep consistent file naming
 - Ensure section IDs are unique
