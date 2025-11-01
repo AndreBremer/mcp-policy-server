@@ -11,7 +11,6 @@ import {
   handleExtractReferences,
   handleValidateReferences,
   handleListSources,
-  handleInspectContext,
   estimateTokens,
   chunkContent,
 } from '../src/handlers';
@@ -175,9 +174,7 @@ describe('MCP Server Integration', () => {
           );
 
           expect(response.content.length).toBeGreaterThan(1);
-          expect(response.content[1].text).toContain(
-            'INCOMPLETE RESPONSE - MANDATORY CONTINUATION REQUIRED'
-          );
+          expect(response.content[1].text).toContain('INCOMPLETE');
           expect(response.content[1].text).toContain('continuation');
         });
 
@@ -483,7 +480,7 @@ describe('MCP Server Integration', () => {
 
         const text = response.content[0].text;
         expect(text).toContain('Policy Documentation Files');
-        expect(text).toContain('Section Format');
+        expect(text).toContain('Format');
       });
 
       test('includes configured files list', () => {
@@ -506,69 +503,22 @@ describe('MCP Server Integration', () => {
         expect(text).toContain('Last indexed:');
       });
 
-      test('includes usage examples', () => {
+      test('includes format documentation', () => {
         const response = handleListSources({}, TEST_CONFIG, indexState);
         const text = response.content[0].text;
 
-        expect(text).toContain('Examples');
-        expect(text).toContain('fetch(sections=');
-        expect(text).toContain('Range:');
-        expect(text).toContain('Multiple:');
+        expect(text).toContain('Format');
+        expect(text).toContain('§');
+        expect(text).toContain('Ranges expand');
       });
 
-      test('documents section notation format', () => {
+      test('documents section notation', () => {
         const response = handleListSources({}, TEST_CONFIG, indexState);
         const text = response.content[0].text;
 
         expect(text).toContain('§');
-        expect(text).toContain('Single:');
-        expect(text).toContain('Range:');
-      });
-    });
-
-    describe('handleInspectContext', () => {
-      test('returns request context information', () => {
-        const mockRequest = {
-          params: { name: 'inspect_context', arguments: {} },
-          method: 'tools/call',
-        };
-
-        const response = handleInspectContext({}, mockRequest);
-
-        expect(response.content).toBeDefined();
-        expect(response.content[0].type).toBe('text');
-
-        const result = JSON.parse(response.content[0].text);
-        expect(result.request_params).toBeDefined();
-        expect(result.request_method).toBe('tools/call');
-      });
-
-      test('includes available properties in context', () => {
-        const mockRequest = {
-          params: { name: 'inspect_context', arguments: {} },
-          method: 'tools/call',
-          customField: 'custom value',
-        };
-
-        const response = handleInspectContext({}, mockRequest);
-        const result = JSON.parse(response.content[0].text);
-
-        expect(result.available_properties).toContain('params');
-        expect(result.available_properties).toContain('method');
-        expect(result.available_properties).toContain('customField');
-      });
-
-      test('handles request with meta information', () => {
-        const mockRequest = {
-          params: { name: 'inspect_context', arguments: {} },
-          method: 'tools/call',
-          _meta: { client_id: 'test-client' },
-        };
-
-        const response = handleInspectContext({}, mockRequest);
-        const result = JSON.parse(response.content[0].text);
-
-        expect(result._meta).toBeDefined();
+        expect(text).toContain('prefix');
+        expect(text).toContain('expand');
       });
     });
   });

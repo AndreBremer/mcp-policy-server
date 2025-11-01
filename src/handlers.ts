@@ -574,18 +574,10 @@ ${config.files.map((file) => `- ${file}`).join('\n')}
 - Duplicate sections: ${index.duplicates.size}
 - Last indexed: ${index.lastIndexed.toISOString()}
 
-## Section Format
+## Format
 
-All section references require § prefix:
-- Single: §APP.7, §SYS.5, §META.2.3
-- Range: §APP.4.1-3 (expands to §APP.4.1, §APP.4.2, §APP.4.3)
-- Multiple: ["§APP.7","§SYS.5","§META.1"] (mixed types in array)
-
-## Examples
-
-- fetch(sections=["§APP.7"]) - Single section
-- fetch(sections=["§APP.4.1-3"]) - Range of sections
-- fetch(sections=["§APP.7","§SYS.5","§META.1"]) - Mixed sections from different docs
+Sections use § prefix: §APP.7, §SYS.5
+Ranges expand: §APP.4.1-3 → §APP.4.1, §APP.4.2, §APP.4.3
 `;
 
   return {
@@ -593,46 +585,6 @@ All section references require § prefix:
       {
         type: 'text',
         text: sourceList,
-      },
-    ],
-  };
-}
-
-/**
- * Handle inspect_context tool request
- *
- * Test tool to inspect MCP request context information.
- * Returns available request properties and metadata.
- *
- * @param _args - Tool arguments (unused)
- * @param request - MCP request object to inspect
- * @returns Tool response with context information as JSON
- *
- * @example
- * ```typescript
- * const response = handleInspectContext({}, request);
- * // Returns: {request_params: {...}, request_method: "...", ...}
- * ```
- */
-export function handleInspectContext(_args: unknown, request: unknown): ToolResponse {
-  // Try to access context information from the request
-  const req = request as Record<string, unknown>;
-  const contextInfo = {
-    request_params: req.params ?? 'not available',
-    request_method: req.method ?? 'not available',
-    available_properties:
-      typeof request === 'object' && request !== null ? Object.keys(request) : [],
-    // Try to access various context properties that might exist
-    _meta: req._meta ?? 'not available',
-    context: req.context ?? 'not available',
-    clientInfo: req.clientInfo ?? 'not available',
-  };
-
-  return {
-    content: [
-      {
-        type: 'text',
-        text: JSON.stringify(contextInfo, null, 2),
       },
     ],
   };

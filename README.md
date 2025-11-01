@@ -211,7 +211,6 @@ List all configured policy files and prefixes.
 
 ### Other Tools
 - `mcp__policy-server__resolve_references` - Map sections to source files
-- `mcp__policy-server__inspect_context` - Debug server configuration
 
 ## Use Cases
 

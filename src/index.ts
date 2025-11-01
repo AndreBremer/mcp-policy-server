@@ -20,7 +20,6 @@ import {
   handleExtractReferences,
   handleValidateReferences,
   handleListSources,
-  handleInspectContext,
 } from './handlers.js';
 import { loadConfig, validateConfiguration, ServerConfig } from './config.js';
 import { initializeIndexState, closeIndexState } from './indexer.js';
@@ -38,16 +37,7 @@ const server = new Server(
       tools: {},
       prompts: {},
     },
-    instructions: `When you encounter § references (like §APP.7 or §SYS.5) in instructions or files, use the mcp__policy-server__fetch_policies tool to retrieve the referenced policy sections.
-
-Examples:
-- See §APP.7 → Call mcp__policy-server__fetch_policies with {"sections": ["§APP.7"]}
-- Follow §APP.4.1-3 → Call mcp__policy-server__fetch_policies with {"sections": ["§APP.4.1-3"]} (ranges expand automatically)
-- Multiple refs §APP.7, §SYS.5 → Call mcp__policy-server__fetch_policies with {"sections": ["§APP.7", "§SYS.5"]}
-
-The tool automatically resolves embedded § references (if §APP.7 mentions §SYS.5, both sections are returned).
-
-Only fetch when you need policy details to complete your task. Don't fetch if the content is already in your context or the reference is purely informational.`,
+    instructions: `Use fetch_policies for § references (§APP.7, §SYS.5). Pass sections array with § prefix. Ranges auto-expand (§APP.4.1-3). Embedded refs resolve recursively. Only fetch when needed.`,
   }
 );
 
@@ -60,7 +50,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'fetch_policies',
         description:
-          'Fetch one or more policy sections with automatic recursive § reference resolution. Supports range notation (§APP.4.1-3) and multiple mixed sections (§APP.7,§SYS.5,§META.1). Automatically chunks large responses to stay within token limits.',
+          'Fetch policy sections with recursive § resolution. Supports ranges and mixed sections. Auto-chunks.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -68,12 +58,11 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'array',
               items: { type: 'string' },
               description:
-                'Section notations with § prefix (e.g., ["§APP.7", "§SYS.5", "§APP.4.1-3"]). Can mix any types: META (meta), SYS (system), APP (application), USER (user), plus extended types (APP-HOOK, APP-PLG, APP-TPL, SYS-TPL)',
+                'Section notations with § prefix (e.g., ["§APP.7", "§SYS.5"]). Types: META, SYS, APP, USER, APP-HOOK, APP-PLG, APP-TPL, SYS-TPL',
             },
             continuation: {
               type: 'string',
-              description:
-                'Continuation token from previous chunked response (e.g., "chunk:1"). Omit for first request.',
+              description: 'Continuation token (e.g., "chunk:1"). Omit for first call.',
               default: null,
             },
           },
@@ -83,7 +72,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'resolve_references',
         description:
-          'Resolve section locations with automatic recursive § reference resolution. Returns a map of policy file to sorted array of reference IDs (e.g., {"policy-application.md": ["§APP.7", "§APP.8"], "policy-system.md": ["§SYS.1", "§SYS.5"]}). Similar to fetch but returns grouped locations instead of content.',
+          'Resolve section locations with recursive § resolution. Returns file-to-sections map not content.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -91,7 +80,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'array',
               items: { type: 'string' },
               description:
-                'Section notations with § prefix (e.g., ["§APP.7", "§SYS.5", "§APP.4.1-3"]). Can mix any types: META (meta), SYS (system), APP (application), USER (user), plus extended types (APP-HOOK, APP-PLG, APP-TPL, SYS-TPL)',
+                'Section notations with § prefix (e.g., ["§APP.7", "§SYS.5"]). Types: META, SYS, APP, USER, APP-HOOK, APP-PLG, APP-TPL, SYS-TPL',
             },
           },
           required: ['sections'],
@@ -99,8 +88,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'extract_references',
-        description:
-          'Extract all § references from a file. Returns an array of section notations found in the document (e.g., ["§APP.7", "§SYS.5", "§META.1"]). Useful for discovering what policy sections are referenced in agents, commands, or other system files.',
+        description: 'Extract § references from file. Returns array of notations.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -114,8 +102,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       },
       {
         name: 'validate_references',
-        description:
-          'Validate that policy section references exist and are unique. Checks each reference against policy files and reports invalid or duplicate sections.',
+        description: 'Validate § references exist and are unique. Reports invalid/duplicates.',
         inputSchema: {
           type: 'object',
           properties: {
@@ -131,15 +118,6 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
       {
         name: 'list_sources',
         description: 'List all available policy documentation files and their section prefixes',
-        inputSchema: {
-          type: 'object',
-          properties: {},
-        },
-      },
-      {
-        name: 'inspect_context',
-        description:
-          'Test tool to inspect MCP request context (client_id, request_id, session info)',
         inputSchema: {
           type: 'object',
           properties: {},
@@ -177,9 +155,6 @@ function setupRequestHandlers(config: ServerConfig, indexState: IndexState): voi
 
         case 'list_sources':
           return handleListSources(args, config, indexState);
-
-        case 'inspect_context':
-          return handleInspectContext(args, request);
 
         default:
           throw new Error(`Unknown tool: ${name}`);
@@ -219,31 +194,19 @@ function setupRequestHandlers(config: ServerConfig, indexState: IndexState): voi
             role: 'user',
             content: {
               type: 'text',
-              text: `# Policy Documentation Auto-Fetch
+              text: `# Auto-Fetch § References
 
-When you encounter § references in agent instructions or system files, automatically fetch the referenced sections using the fetch_policies tool.
+Auto-fetch § references from agent/system files using fetch_policies.
 
-## Section Notation
-
+Available sections:
 ${prefixDocs}
 
-## Auto-Fetch Behavior
+When you see § refs:
+1. Extract notations (§APP.7, §SYS.5)
+2. Call fetch with sections array
+3. Use content for task
 
-**When you see § references:**
-1. Extract all unique section notations (e.g., §APP.7, §SYS.5, §META.1)
-2. Call fetch tool with the extracted sections (include § prefix)
-3. Use the fetched content to inform your task
-
-**Examples:**
-- Agent mentions "Follow §APP.7 standards" → Fetch ["§APP.7"]
-- Instructions reference "§APP.4.1 and §APP.4.2" → Fetch ["§APP.4.1", "§APP.4.2"]
-- Multiple refs "See §APP.7, §SYS.5, §META.1" → Fetch ["§APP.7", "§SYS.5", "§META.1"] in one call
-
-**Do NOT fetch if:**
-- Section already provided in context
-- Reference is purely informational (e.g., "documented in §APP.7" without needing details)
-
-This eliminates the need for explicit bash prefetch commands in agent files.`,
+Skip if already in context or purely informational.`,
             },
           },
         ],
