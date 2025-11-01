@@ -15,7 +15,6 @@ Teams document standards in markdown files (coding guidelines, architecture prin
 - **Reference entire documents**: Wastes tokens, hits context limits
 - **Maintain each subagent separately**: Unnecessary duplication, hard to keep consistent
 - **Put everything in memory like CLAUDE.MD**: Signal loss, high token costs due to implicit context
-- **Copy nothing**: Subagents don't follow your standards
 
 ### The Solution
 
@@ -41,10 +40,7 @@ tools: mcp__policy-server__fetch_policies, Read, Glob
 
 You are a code reviewer following our team standards.
 
-**Before reviewing code:** call `mcp__policy-server__fetch_policies` with:
-```json
-{"sections": ["§API.7", "§CODE.3"]}
-```
+**Before reviewing code:** call `mcp__policy-server__fetch_policies` with `{"sections": ["§API.7", "§CODE.3"]}`
 
 This retrieves:
 - §API.7 - REST API Design Principles
@@ -65,7 +61,7 @@ See also §CODE.3 for error handling.
 ```
 
 **What happens:**
-Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server returns requested sections plus embedded references (§CODE.3). See [Getting Started](docs/GETTING_STARTED.md#step-6-use-the-agent) for detailed workflow.
+Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server returns requested sections plus embedded references (`§CODE.3`). See [Getting Started](docs/GETTING_STARTED.md#step-6-use-the-agent) for detailed workflow.
 
 ## Installation
 
