@@ -14,7 +14,7 @@ Teams document standards in markdown files (coding guidelines, architecture prin
 
 - **Reference entire documents**: Wastes tokens, hits context limits
 - **Maintain each subagent separately**: Unnecessary duplication, hard to keep consistent
-- **Put everything in memory like CLAUDE.MD**: Signal loss, high token costs due to implicit context
+- **Put everything in memory like CLAUDE.md**: Signal loss, high token costs due to implicit context
 
 ### The Solution
 
@@ -65,7 +65,7 @@ Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server 
 
 ## Installation
 
-### Quick Start (claude mcp add)
+### Quick Start (Claude Code)
 
 **Linux/macOS:**
 ```bash
