@@ -1,5 +1,22 @@
 # Release Notes
 
+## v0.2.2 (2025-11-01)
+
+### Improvements
+
+- Removed unused `inspect_context` tool handler (simplified codebase)
+- Optimized MCP tool descriptions for token efficiency
+- Enhanced Windows installation instructions with platform-specific guidance
+- Improved configuration examples in documentation
+
+### Code Quality
+
+- Reduced tool prompt complexity (69 lines to 33 lines in src/index.ts)
+- Removed 136 lines of unused code across handlers and tests
+- Streamlined tool registration logic
+
+---
+
 ## v0.2.1 (2025-10-31)
 
 ### Bug Fixes
