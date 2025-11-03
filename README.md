@@ -24,7 +24,7 @@ Reference sections with notation like `§API.7` or `§DEPLOY.3.1-5`. Subagents f
 
 - **No wasted context**: Fetch only needed sections, not entire documents
 - **Always current**: Update files, changes appear automatically (no restart needed for file edits; new files matching existing patterns require restart)
-- **Automatic resolution**: Reference §DOC.5, server fetches it plus any sections it references
+- **Automatic resolution**: Reference `§DOC.5`, server fetches it plus any sections it references
 - **Fast lookups**: O(1) retrieval via section indexing
 - **Per-project policies**: Same installation, different policy sets per project
 
