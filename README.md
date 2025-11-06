@@ -69,9 +69,10 @@ Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server 
 
 **Linux/macOS:**
 ```bash
-claude mcp add --transport stdio policy-server \
-  npx -y @andrebremer/mcp-policy-server \
-  --env MCP_POLICY_CONFIG=./policies/*.md \
+claude mcp add-json policy-server ('{' `
+  '"type": "stdio", "command": "npx",' + `
+  '"args": ["-y", "@andrebremer/mcp-policy-server"], ' + `
+  '"env": {"MCP_POLICY_CONFIG": "./policies/*.md"}}') `
   --scope project
 ```
 
