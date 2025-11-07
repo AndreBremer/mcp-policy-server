@@ -108,7 +108,7 @@ See [Installation Guide](docs/INSTALLATION.md) for detailed setup and developmen
 
 ### Try it in a Subagent
 
-Create a simple agent that uses the policy server to fetch and reference policies (for example, './.claude/agents/policy-tester.md'):
+Create a simple agent that uses the policy server to fetch and reference policies (for example, `./.claude/agents/policy-tester.md`):
 
 ```markdown
 ---
