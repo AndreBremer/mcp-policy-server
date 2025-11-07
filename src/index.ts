@@ -37,7 +37,7 @@ const server = new Server(
       tools: {},
       prompts: {},
     },
-    instructions: `Use fetch_policies for § references (§APP.7, §SYS.5). Pass sections array with § prefix. Ranges auto-expand (§APP.4.1-3). Embedded refs resolve recursively. Only fetch when needed.`,
+    instructions: `Use fetch_policies for § references. Pass sections array with § prefix. Ranges auto-expand. Embedded refs resolve recursively. Only fetch when needed.`,
   }
 );
 
@@ -58,7 +58,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'array',
               items: { type: 'string' },
               description:
-                'Section notations with § prefix (e.g., ["§APP.7", "§SYS.5"]). Types: META, SYS, APP, USER, APP-HOOK, APP-PLG, APP-TPL, SYS-TPL',
+                'Section notations with § prefix (e.g., ["§PREFIX.1", "§PREFIX.2.3"])',
             },
             continuation: {
               type: 'string',
@@ -80,7 +80,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
               type: 'array',
               items: { type: 'string' },
               description:
-                'Section notations with § prefix (e.g., ["§APP.7", "§SYS.5"]). Types: META, SYS, APP, USER, APP-HOOK, APP-PLG, APP-TPL, SYS-TPL',
+                'Section notations with § prefix (e.g., ["§PREFIX.1", "§PREFIX.2.3"])',
             },
           },
           required: ['sections'],
@@ -109,7 +109,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             references: {
               type: 'array',
               items: { type: 'string' },
-              description: 'Section notations to validate (e.g., ["§APP.7", "§SYS.5"])',
+              description: 'Section notations to validate (e.g., ["§PREFIX.1", "§PREFIX.2.3"])',
             },
           },
           required: ['references'],
