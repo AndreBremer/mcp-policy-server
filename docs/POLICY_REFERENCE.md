@@ -2,7 +2,7 @@
 
 Reference for § notation syntax and policy file structure.
 
-**Note:** Examples use DOC, API, CODE, and GUIDE prefixes. These are user-defined prefixes configured in policies.json. Choose any naming scheme that fits your organizational structure.
+**Note:** Examples use PREFIX and EXAMPLE as generic placeholders. Actual prefix names are user-defined and configured via your policy files. Choose any naming scheme that fits your organizational structure.
 
 ## Overview
 
@@ -18,14 +18,14 @@ The § (section sign) notation references specific policy documentation sections
 
 **Components:**
 - `§` - Required section symbol (U+00A7)
-- `PREFIX` - Uppercase prefix identifier (DOC, API, GUIDE, etc.)
+- `PREFIX` - Uppercase prefix identifier (user-defined)
 - `.N` - Dot-separated section numbers (numeric only)
 - `−N` - Optional range end (hyphen followed by number)
 
 ### Format Rules
 
 1. **§ symbol required** - All references start with §
-2. **PREFIX uppercase** - Must match configuration (DOC not doc)
+2. **PREFIX uppercase** - Must match configuration (PREFIX not prefix)
 3. **Section numbers numeric** - No letters or special characters
 4. **Dot separators** - Separate subsections with dots
 5. **Hyphen for ranges** - Single hyphen between start and end
@@ -36,26 +36,26 @@ The § (section sign) notation references specific policy documentation sections
 
 **Top-level (§PREFIX.N):**
 ```markdown
-## {§DOC.1}
+## {§PREFIX.1}
 Section content...
 ```
 
 **Subsections (§PREFIX.N.N):**
 ```markdown
-### {§DOC.4.1}
+### {§PREFIX.1.1}
 Subsection content...
 ```
 
 **Deep subsections (§PREFIX.N.N.N):**
 ```markdown
-#### {§DOC.4.1.2}
+#### {§PREFIX.1.1.1}
 Deep subsection content...
 ```
 
 **Examples:**
-- `§DOC.1` - Top-level section
-- `§DOC.4.1` - Subsection
-- `§DOC.4.1.2` - Deep subsection
+- `§PREFIX.1` - Top-level section
+- `§PREFIX.1.1` - Subsection
+- `§PREFIX.1.1.1` - Deep subsection
 
 ## Range Notation
 
@@ -63,14 +63,14 @@ Ranges expand to all sections between start and end (inclusive).
 
 **Subsection ranges (§PREFIX.N.N-N):**
 ```
-§DOC.4.1-3 expands to §DOC.4.1, §DOC.4.2, §DOC.4.3
-§API.2.5-8 expands to §API.2.5, §API.2.6, §API.2.7, §API.2.8
+§PREFIX.1.1-3 expands to §PREFIX.1.1, §PREFIX.1.2, §PREFIX.1.3
+§PREFIX.2.5-8 expands to §PREFIX.2.5, §PREFIX.2.6, §PREFIX.2.7, §PREFIX.2.8
 ```
 
 **Section ranges (§PREFIX.N-N):**
 ```
-§DOC.2-4 expands to §DOC.2, §DOC.3, §DOC.4
-§GUIDE.1-5 expands to §GUIDE.1, §GUIDE.2, §GUIDE.3, §GUIDE.4, §GUIDE.5
+§PREFIX.2-4 expands to §PREFIX.2, §PREFIX.3, §PREFIX.4
+§PREFIX.1-5 expands to §PREFIX.1, §PREFIX.2, §PREFIX.3, §PREFIX.4, §PREFIX.5
 ```
 
 ### Range Rules
@@ -81,23 +81,23 @@ Ranges expand to all sections between start and end (inclusive).
 4. **Inclusive** - Both start and end included
 
 **Valid ranges:**
-- `§DOC.1-3` - Section range
-- `§DOC.4.1-3` - Subsection range with same parent
+- `§PREFIX.1-3` - Section range
+- `§PREFIX.1.1-3` - Subsection range with same parent
 
 **Invalid ranges:**
-- `§DOC.1-3.2` - Mixed depth
-- `§DOC.4.1-5` - Different depth levels
-- `§DOC.4.1-5.3` - Different parents
-- `§DOC.5-2` - Backwards (start > end)
+- `§PREFIX.1-3.2` - Mixed depth
+- `§PREFIX.1.1-5` - Different depth levels
+- `§PREFIX.1.1-5.3` - Different parents
+- `§PREFIX.5-2` - Backwards (start > end)
 
 ## Hyphenated Prefixes
 
 Use hyphens to organize related sections:
 
 ```markdown
-## {§API.1} General Guidelines
-## {§API-REST.1} REST APIs
-## {§API-GRAPHQL.1} GraphQL APIs
+## {§PREFIX.1} General Guidelines
+## {§PREFIX-EXT.1} Extended Category
+## {§PREFIX-EXT.2} Another Extended Category
 ```
 
 Server searches all configured files for the section ID. No special configuration needed.
@@ -110,11 +110,11 @@ The server resolves § references embedded in section content.
 
 **Example:**
 ```markdown
-## {§DOC.1} Overview
-This section covers basic concepts. For details see §DOC.4.1 and §API.2.
+## {§PREFIX.1} Overview
+This section covers basic concepts. For details see §PREFIX.2.1 and §OTHER.1.
 ```
 
-Fetching §DOC.1 returns all three sections (§DOC.1, §DOC.4.1, §API.2).
+Fetching §PREFIX.1 returns all three sections (§PREFIX.1, §PREFIX.2.1, §OTHER.1).
 
 ### Recursive Resolution
 
@@ -122,19 +122,19 @@ Resolution continues until no references remain.
 
 **Example chain:**
 ```markdown
-## {§DOC.1} See §DOC.2 for details...
-## {§DOC.2} Refer to §DOC.3 for examples...
-## {§DOC.3} Check §API.1 for implementation...
-## {§API.1} Final section with no references...
+## {§PREFIX.1} See §PREFIX.2 for details...
+## {§PREFIX.2} Refer to §PREFIX.3 for examples...
+## {§PREFIX.3} Check §OTHER.1 for implementation...
+## {§OTHER.1} Final section with no references...
 ```
 
-Fetching §DOC.1 returns all four sections.
+Fetching §PREFIX.1 returns all four sections.
 
 ### Deduplication
 
 The server removes duplicates:
 
-- Parent sections include children (§DOC.4 includes §DOC.4.1, §DOC.4.2)
+- Parent sections include children (§PREFIX.1 includes §PREFIX.1.1, §PREFIX.1.2)
 - Multiple references to same section fetched once
 
 ## Parent-Child Relationships
@@ -144,15 +144,15 @@ The server removes duplicates:
 Sections form implicit hierarchies:
 
 ```
-§DOC.4
-  ├─ §DOC.4.1
-  ├─ §DOC.4.2
-  │   ├─ §DOC.4.2.1
-  │   └─ §DOC.4.2.2
-  └─ §DOC.4.3
+§PREFIX.1
+  ├─ §PREFIX.1.1
+  ├─ §PREFIX.1.2
+  │   ├─ §PREFIX.1.2.1
+  │   └─ §PREFIX.1.2.2
+  └─ §PREFIX.1.3
 ```
 
-Fetching §DOC.4 returns all child content (§DOC.4.1, §DOC.4.2, §DOC.4.2.1, etc.).
+Fetching §PREFIX.1 returns all child content (§PREFIX.1.1, §PREFIX.1.2, §PREFIX.1.2.1, etc.).
 
 ### Stopping Rules
 
@@ -168,40 +168,39 @@ Fetching §DOC.4 returns all child content (§DOC.4.1, §DOC.4.2, §DOC.4.2.1, e
 
 **End marker example:**
 ```markdown
-## {§DOC.4} Section
+## {§PREFIX.1} Section
 Section content...
 
-### {§DOC.4.1} Subsection
+### {§PREFIX.1.1} Subsection
 Subsection content...
 
 {§END}
 
-This content is not part of §DOC.4.1 or §DOC.4
+This content is not part of §PREFIX.1.1 or §PREFIX.1
 ```
 
 ## Section Sorting
 
 Sections sort by:
-1. Prefix alphabetically (APP before META before SYS)
-2. Section numbers numerically (§DOC.2 before §DOC.10)
-3. Subsections follow parent (§DOC.2 before §DOC.2.1 before §DOC.3)
+1. Prefix alphabetically
+2. Section numbers numerically (§PREFIX.2 before §PREFIX.10)
+3. Subsections follow parent (§PREFIX.2 before §PREFIX.2.1 before §PREFIX.3)
 
 **Example order:**
 ```
-§API.1, §API.2, §API.2.1, §API.2.2, §API.10
-§APP.1, §APP.4, §APP.4.1, §APP.4.2, §APP-HOOK.1
-§DOC.1, §DOC.2
-§META.1
-§SYS.1
+§ABC.1, §ABC.2, §ABC.2.1, §ABC.2.2, §ABC.10
+§PREFIX.1, §PREFIX.1.1, §PREFIX.1.2, §PREFIX.2
+§PREFIX-EXT.1
+§XYZ.1
 ```
 
 **Fetch responses return sorted sections:**
 ```
-Request: ["§DOC.4", "§API.1", "§DOC.2"]
-Response: §API.1, §DOC.2, §DOC.4
+Request: ["§PREFIX.2", "§ABC.1", "§PREFIX.1"]
+Response: §ABC.1, §PREFIX.1, §PREFIX.2
 
-Request: ["§SYS.5", "§APP.7", "§META.1"]
-Response: §APP.7, §META.1, §SYS.5
+Request: ["§XYZ.1", "§ABC.1", "§PREFIX.1"]
+Response: §ABC.1, §PREFIX.1, §XYZ.1
 ```
 
 ## Validation
@@ -221,8 +220,8 @@ The `mcp__policy-server__validate_references` tool checks format, prefix existen
 {
   "valid": false,
   "checked": 3,
-  "invalid": ["§DOC.999"],
-  "details": ["§DOC.999: Section not found in policy-documentation.md"]
+  "invalid": ["§PREFIX.999"],
+  "details": ["§PREFIX.999: Section not found in policy-file.md"]
 }
 ```
 
@@ -230,35 +229,34 @@ The `mcp__policy-server__validate_references` tool checks format, prefix existen
 
 | Error | Example | Correct |
 |-------|---------|---------|
-| Missing § symbol | `DOC.1` | `§DOC.1` |
-| Lowercase prefix | `§doc.1` | `§DOC.1` |
-| Invalid characters | `§DOC.1a` | `§DOC.1` |
-| Missing prefix | `§UNKNOWN.1` | `§DOC.1` |
+| Missing § symbol | `PREFIX.1` | `§PREFIX.1` |
+| Lowercase prefix | `§prefix.1` | `§PREFIX.1` |
+| Invalid characters | `§PREFIX.1a` | `§PREFIX.1` |
+| Unknown prefix | `§UNKNOWN.1` | `§PREFIX.1` |
 
 ## Examples
 
 ### In Markdown
 
 ```markdown
-For API guidelines, see §API.1 and §API.2.
+For guidelines, see §PREFIX.1 and §PREFIX.2.
 
-## {§DOC.4} Configuration
-This section covers configuration...
+## {§PREFIX.1} Overview
+This section covers the basics...
 
 Related sections:
-- §DOC.1 - Overview
-- §DOC.2 - Installation
-- §DOC.3 - Configuration
+- §PREFIX.2 - Details
+- §PREFIX.3 - Examples
 
-See §DOC.4.1-3 for configuration options.
+See §PREFIX.1.1-3 for more options.
 ```
 
 ### In JSON
 
 ```json
-{"sections": ["§DOC.7", "§API.5"]}
-{"sections": ["§DOC.4.1-3"]}
-{"references": ["§DOC.1", "§API.2", "§GUIDE.5"]}
+{"sections": ["§PREFIX.1", "§PREFIX.2"]}
+{"sections": ["§PREFIX.1.1-3"]}
+{"references": ["§PREFIX.1", "§PREFIX.2", "§OTHER.1"]}
 ```
 
 ## Best Practices
@@ -267,37 +265,37 @@ See §DOC.4.1-3 for configuration options.
 
 Use clear, specific section names:
 ```markdown
-## {§DOC.1} Overview        ✓
-## {§DOC.1} Section 1       ❌
+## {§PREFIX.1} Overview        ✓
+## {§PREFIX.1} Section 1       ❌
 ```
 
 ### Logical Hierarchy
 
 Group related content under parent sections:
 ```markdown
-## {§DOC.4} Configuration
-### {§DOC.4.1} File Configuration
-### {§DOC.4.2} Environment Variables
-### {§DOC.4.3} Command Line Options
+## {§PREFIX.1} Main Topic
+### {§PREFIX.1.1} Subtopic One
+### {§PREFIX.1.2} Subtopic Two
+### {§PREFIX.1.3} Subtopic Three
 ```
 
 ### Compact References
 
 Use ranges and parents to avoid duplication:
 ```
-§DOC.2-5    ✓ Compact
-§DOC.2, §DOC.3, §DOC.4, §DOC.5    ❌ Verbose
+§PREFIX.2-5    ✓ Compact
+§PREFIX.2, §PREFIX.3, §PREFIX.4, §PREFIX.5    ❌ Verbose
 
-§DOC.4    ✓ Includes all subsections
-§DOC.4.1, §DOC.4.2, §DOC.4.3    ❌ Redundant
+§PREFIX.1    ✓ Includes all subsections
+§PREFIX.1.1, §PREFIX.1.2, §PREFIX.1.3    ❌ Redundant
 ```
 
 ### Sequential Numbering
 
 Number sections sequentially without gaps:
 ```
-§DOC.1, §DOC.2, §DOC.3    ✓
-§DOC.1, §DOC.5, §DOC.10    ❌ Gaps in numbering
+§PREFIX.1, §PREFIX.2, §PREFIX.3    ✓
+§PREFIX.1, §PREFIX.5, §PREFIX.10    ❌ Gaps in numbering
 ```
 
 ## Code Blocks and Examples

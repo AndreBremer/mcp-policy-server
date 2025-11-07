@@ -12,59 +12,30 @@ See [INSTALLATION.md](INSTALLATION.md) for prerequisites and complete installati
 
 Create your first policy file with section markers.
 
-**policies/policy-coding.md:**
+**policies/policy-example.md:**
 ```markdown
-# Coding Standards
+# Example Policy Document
 
-## {§CODE.1}
-### General Principles
+## {§EXAMPLE.1} First Section
 
-Code must be readable, maintainable, and well-tested. Follow language-specific style guides and document complex logic.
+This is the content for the first section of your policy documentation.
 
-## {§CODE.2}
-### Error Handling
+## {§EXAMPLE.2} Second Section
 
-All functions must handle errors explicitly:
-- Use try-catch blocks for async operations
-- Return error objects, don't throw strings
-- Log errors with context for debugging
+Content for the second section goes here.
 
-See §CODE.5 for logging standards.
+See §EXAMPLE.3 for additional information.
 
-## {§CODE.3}
-### Testing Requirements
+## {§EXAMPLE.3} Third Section
 
-Every feature requires:
-- Unit tests covering core logic (80% coverage minimum)
-- Integration tests for API endpoints
-- E2E tests for critical user flows
+Additional policy details and guidelines.
 
-Use mocking frameworks to isolate units under test.
-
-## {§CODE.4}
-### Code Review Process
-
-All code requires peer review before merging:
-1. Self-review first (check §CODE.1, §CODE.2, §CODE.3)
-2. Request review from team member
-3. Address feedback within 24 hours
-4. Obtain approval before merge
-
-## {§CODE.5}
-### Logging Standards
-
-Use structured logging with severity levels:
-- ERROR: System failures requiring immediate attention
-- WARN: Degraded functionality, should be investigated
-- INFO: Normal operations, audit trail
-- DEBUG: Development troubleshooting only
-
-Include request IDs for traceability.
+Refer back to §EXAMPLE.1 for context.
 ```
 
 **Key points:**
 - Use format `## {§PREFIX.N}` for section markers (see [Policy Reference](POLICY_REFERENCE.md) for complete syntax)
-- Sections can reference other sections (§CODE.5 referenced from §CODE.2)
+- Sections can reference other sections (§EXAMPLE.3 referenced from §EXAMPLE.2)
 
 ## Step 3: Configure Policy Files
 
@@ -215,60 +186,53 @@ Create a subagent file that references your policies.
 
 **Key principle:** Subagents must be explicitly instructed to call `mcp__policy-server__fetch_policies` with the sections they need. Simply mentioning § references is not enough - subagents need clear instructions to fetch them.
 
-**.claude/agents/code-reviewer.md:**
-```markdown
+**.claude/agents/policy-agent.md:**
+````markdown
 ---
-name: code-reviewer
-description: Reviews code changes for compliance with policy standards
-tools: mcp__policy-server__fetch_policies, Read, Glob
+name: policy-agent
+description: Example agent that uses policy sections
+tools: mcp__policy-server__fetch_policies, Read
 model: inherit
 ---
 
-You are a code reviewer ensuring adherence to team standards.
+You are an agent that follows team policies.
 
 ## Process
 
-When reviewing code:
+When completing tasks:
 
-1. **Fetch relevant standards** by calling the `mcp__policy-server__fetch_policies` tool with:
+1. **Fetch relevant policies** by calling the `mcp__policy-server__fetch_policies` tool with:
    ```json
-   {"sections": ["§CODE.1", "§CODE.2", "§CODE.3", "§CODE.4"]}
+   {"sections": ["§EXAMPLE.1", "§EXAMPLE.2"]}
    ```
-   This retrieves:
-   - §CODE.1 - General principles
-   - §CODE.2 - Error handling
-   - §CODE.3 - Testing requirements
-   - §CODE.4 - Code review process
+   This retrieves the policy sections from your configured files.
 
-2. **Review the code** against fetched standards
+2. **Apply the policies** to your work
 
-3. **Provide feedback** structured as:
-   - **Strengths**: What's done well
-   - **Issues**: Specific violations with section references
-   - **Recommendations**: How to fix with code examples
+3. **Provide output** that follows the fetched standards
 
 ## Important
 
-Always fetch policies FIRST before reviewing. The § references in step 1 are placeholders - you must actually call the tool to get the policy content.
+Always fetch policies FIRST. The § references in step 1 are placeholders - you must actually call the tool to get the policy content.
 
-Cite specific policy sections (§CODE.N) when noting violations.
-```
+Cite specific policy sections when explaining your decisions.
+````
 
 ## Step 6: Use the Subagent
 
-Invoke your code review subagent with a code sample:
+Invoke your subagent:
 
 ```
-@agent-code-reviewer review @path/to/code-file.js:
+@agent-policy-agent complete the task
 ```
 
 **What happens:**
 1. Subagent reads its instructions
-2. Subagent sees references to §CODE.1, §CODE.2, §CODE.3
+2. Subagent sees references to §EXAMPLE.1, §EXAMPLE.2
 3. Subagent calls MCP `mcp__policy-server__fetch_policies` tool with those sections
-4. Server returns requested sections PLUS §CODE.5 (referenced from §CODE.2)
-5. Subagent reviews code against current standards
-6. Subagent provides feedback with specific policy citations
+4. Server returns requested sections PLUS §EXAMPLE.3 (referenced from §EXAMPLE.2)
+5. Subagent applies policies to complete the task
+6. Subagent provides output with specific policy citations
 
 ## Step 7: Automatic Policy Updates
 
@@ -288,8 +252,7 @@ Policy files are watched automatically for changes. Updates appear on the next t
 **No restart needed:**
 ```markdown
 # Edit your policy file
-## {§CODE.1}
-### General Principles
+## {§EXAMPLE.1} First Section
 
 Updated content here...  # <-- Save the file
 
@@ -305,27 +268,19 @@ Updated content here...  # <-- Save the file
 
 Add more policy files as needed:
 
-**policies/policy-api.md:**
+**policies/policy-other.md:**
 ```markdown
-# API Standards
+# Additional Policies
 
-## {§API.1}
-### REST Endpoint Design
+## {§OTHER.1} First Policy
 
-All REST endpoints follow these conventions:
-- Use plural nouns for resources (/users, /orders)
-- Use proper HTTP verbs (GET, POST, PUT, DELETE)
-- Return appropriate status codes
+Content for another policy section.
 
-See §CODE.2 for error response format.
+## {§OTHER.2} Second Policy
 
-## {§API.2}
-### Authentication
+Additional guidelines and standards.
 
-All endpoints require authentication except /health and /metrics:
-- Use Bearer tokens in Authorization header
-- Validate tokens on every request
-- Return 401 for invalid tokens, 403 for insufficient permissions
+See §EXAMPLE.1 for related information.
 ```
 
 If using a glob pattern, the new file is automatically included (no configuration changes needed):
@@ -339,30 +294,30 @@ If using a glob pattern, the new file is automatically included (no configuratio
 }
 ```
 
-The pattern `./policies/policy-*.md` matches both `policy-coding.md` and `policy-api.md`. Restart the server to detect the new file.
+The pattern `./policies/policy-*.md` matches both `policy-example.md` and `policy-other.md`. Restart the server to detect the new file.
 
 See [Configuration Reference](CONFIGURATION_REFERENCE.md#examples) for advanced examples.
 
-Create subagents that reference API policies:
+Create subagents that reference multiple policies:
 
-**.claude/agents/api-designer.md:**
+**.claude/agents/multi-policy-agent.md:**
 ```markdown
-You design REST APIs following company standards.
+You are an agent that follows multiple policy categories.
 
-Before designing endpoints, fetch:
-- §API.1 (endpoint design conventions)
-- §API.2 (authentication requirements)
-- §CODE.2 (error handling patterns)
+Before proceeding, fetch:
+- §EXAMPLE.1 (first example section)
+- §OTHER.1 (other policy section)
+- §OTHER.2 (additional guidelines)
 ```
 
 ## Advanced Features
 
 The server supports advanced § notation features:
 
-- **Range notation**: `§CODE.1-3` expands to sections 1, 2, and 3 (see [Policy Reference](POLICY_REFERENCE.md#range-notation) for complete syntax and rules)
-- **Subsections**: `§API.3.1` for nested content organization
-- **Hyphenated prefixes**: `§API-REST.1` resolves via base prefix
-- **Automatic reference resolution**: Fetching `§CODE.2` also fetches any sections it references (like `§CODE.5`)
+- **Range notation**: `§EXAMPLE.1-3` expands to sections 1, 2, and 3 (see [Policy Reference](POLICY_REFERENCE.md#range-notation) for complete syntax and rules)
+- **Subsections**: `§EXAMPLE.1.1` for nested content organization
+- **Hyphenated prefixes**: `§PREFIX-EXT.1` resolves via base prefix
+- **Automatic reference resolution**: Fetching `§EXAMPLE.2` also fetches any sections it references (like `§EXAMPLE.3`)
 
 See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and examples.
 
@@ -374,7 +329,7 @@ See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and 
 - **Windows paths**: Use forward slashes: `C:/path/to/policies.json`
 
 ### Section Issues
-- **Section not found**: Check section exists and format is `## {§CODE.1}`
+- **Section not found**: Check section exists and format is `## {§PREFIX.1}`
 - **Prefix not recognized**: Verify policy file is in configured files list
 - **Duplicates**: Same section ID in multiple files - remove from one
 
@@ -391,10 +346,10 @@ See [Policy Reference](POLICY_REFERENCE.md) for complete § notation syntax and 
 ## Next Steps
 
 - **Add more policies**: Create additional policy files matching your glob pattern
-- **Organize with prefixes**: Use hyphenated prefixes (CODE-JS, CODE-PY) for language-specific standards
-- **Create specialized subagents**: Build subagents for specific tasks (security review, performance review)
+- **Organize with prefixes**: Use hyphenated prefixes for category organization
+- **Create specialized subagents**: Build subagents for specific tasks
 - **Cross-reference policies**: Link related sections with § notation for automatic dependency resolution
-- **Validate references**: Use `mcp__policy-server__validate_references` tool before deploying subagents to production
+- **Validate references**: Use `mcp__policy-server__validate_references` tool before deploying subagents
 - **Monitor updates**: Check server logs for `[WATCH]` and `[INDEX]` messages to see automatic updates in action
 
 ## Reference

@@ -35,10 +35,12 @@ See [Getting Started Guide](GETTING_STARTED.md) to create policies.json and poli
 
 **Linux/macOS:**
 ```bash
-claude mcp add --transport stdio policy-server \
-  npx -y @andrebremer/mcp-policy-server \
-  --env MCP_POLICY_CONFIG="[relative/path/to/policies]" \
-  --scope project
+claude mcp add-json policy-server --scope project '{
+ "type": "stdio", 
+ "command": "npx", 
+ "args": ["-y", "@andrebremer/mcp-policy-server"], 
+ "env": {"MCP_POLICY_CONFIG": "[relative/path/to/policies]"}
+}'
 ```
 
 

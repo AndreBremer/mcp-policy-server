@@ -12,19 +12,19 @@ Stop copying entire policy documents into prompts. Reference specific sections w
 
 Teams document standards in markdown files (coding guidelines, architecture principles, deployment procedures). When you want Claude Code subagents to follow these standards, you're stuck with imperfect options:
 
+- **Put everything in memory like CLAUDE.md**: Signal loss, high token costs due to implicit context that may not be needed for all tasks
 - **Reference entire documents**: Wastes tokens, hits context limits
 - **Maintain each subagent separately**: Unnecessary duplication, hard to keep consistent
-- **Put everything in memory like CLAUDE.md**: Signal loss, high token costs due to implicit context
 
 ### The Solution
 
-Reference sections with notation like `§API.7` or `§DEPLOY.3.1-5`. Subagents fetch referenced sections on demand. Your standards stay in markdown files. Subagents always get current content without token waste.
+Reference sections with notation like `§PREFIX.1` or `§PREFIX.2.3-5`. Subagents fetch referenced sections on demand. Your standards stay in markdown files. Subagents always get current content without token waste.
 
 ### Key Benefits
 
 - **No wasted context**: Fetch only needed sections, not entire documents
 - **Always current**: Update files, changes appear automatically (no restart needed for file edits; new files matching existing patterns require restart)
-- **Automatic resolution**: Reference `§DOC.5`, server fetches it plus any sections it references
+- **Automatic resolution**: Reference one section, server fetches it plus any sections it references
 - **Fast lookups**: O(1) retrieval via section indexing
 - **Per-project policies**: Same installation, different policy sets per project
 
@@ -40,40 +40,53 @@ tools: mcp__policy-server__fetch_policies, Read, Glob
 
 You are a code reviewer following our team standards.
 
-**Before reviewing code:** call `mcp__policy-server__fetch_policies` with `{"sections": ["§API.7", "§CODE.3"]}`
+**Before reviewing code:** call `mcp__policy-server__fetch_policies` with `{"sections": ["§EXAMPLE.1", "§EXAMPLE.2"]}`
 
-This retrieves:
-- §API.7 - REST API Design Principles
-- §CODE.3 - Error Handling
+This retrieves the specified policy sections from your configured files.
 ```
 
-**Policy file (`policies/policy-api.md`):**
+**Policy file (`policies/policy-example.md`):**
 ```markdown
-## {§API.7}
-### REST API Design Principles
+## {§EXAMPLE.1} Sample Policy Section
 
-All endpoints follow RESTful conventions:
-- Use proper HTTP verbs (GET, POST, PUT, DELETE)
-- Return appropriate status codes
-- Include request/response examples
+Policy content goes here with your team's standards and guidelines.
 
-See also §CODE.3 for error handling.
+See also §EXAMPLE.2 for related information.
 ```
 
 **What happens:**
-Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server returns requested sections plus embedded references (`§CODE.3`). See [Getting Started](docs/GETTING_STARTED.md#step-6-use-the-agent) for detailed workflow.
+Subagent calls `mcp__policy-server__fetch_policies` with those sections. Server returns requested sections plus embedded references (`§EXAMPLE.2`). See [Getting Started](docs/GETTING_STARTED.md#step-6-use-the-agent) for detailed workflow.
 
 ## Installation
 
 ### Quick Start (Claude Code)
 
+Create a policies directory in your project root (`./policies`), and add a sample policy file (`./policies/example-policy.md`):
+
+```markdown
+## {§DESIGN.1} YAGNI (You Aren't Gonna Need It)
+
+Build what you need now. Add features when needed, not in anticipation.
+
+**Guidelines:**
+- No speculative generalization
+- No placeholder code for "future features"
+- No abstraction without 3+ concrete use cases
+- Delete unused code immediately
+```
+
+### Install the MCP Policy Server
+
+The following commands add the MCP Policy Server to your project in Claude Code and configure it to load policies from the `./policies` directory.
+
 **Linux/macOS:**
 ```bash
-claude mcp add-json policy-server ('{' `
-  '"type": "stdio", "command": "npx",' + `
-  '"args": ["-y", "@andrebremer/mcp-policy-server"], ' + `
-  '"env": {"MCP_POLICY_CONFIG": "./policies/*.md"}}') `
-  --scope project
+claude mcp add-json policy-server --scope project '{
+ "type": "stdio", 
+ "command": "npx", 
+ "args": ["-y", "@andrebremer/mcp-policy-server"], 
+ "env": {"MCP_POLICY_CONFIG": "./policies/*.md"}
+}'
 ```
 
 **Windows:**
@@ -85,110 +98,46 @@ claude mcp add-json policy-server ('{' `
   --scope project
 ```
 
-### Manual Configuration
-
-Create `.mcp.json` in your project root:
-
-**Linux/macOS:**
-```json
-{
-  "mcpServers": {
-    "policy-server": {
-      "command": "npx",
-      "args": ["-y", "@andrebremer/mcp-policy-server"],
-      "env": {
-        "MCP_POLICY_CONFIG": "./policies/*.md"
-      }
-    }
-  }
-}
-```
-
-**Windows:**
-```json
-{
-  "mcpServers": {
-    "policy-server": {
-      "command": "cmd",
-      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
-      "env": {
-        "MCP_POLICY_CONFIG": "./policies/*.md"
-      }
-    }
-  }
-}
-```
-
-Restart Claude Code after creating `.mcp.json`.
-
 See [Installation Guide](docs/INSTALLATION.md) for detailed setup and development installation.
 
-## Configuration
+### Test the Setup
 
-### Direct Glob Pattern (Recommended)
+1. Restart Claude Code
+2. Accept any prompts to enable the new MCP server
+3. Prompt `fetch §DESIGN.1` to verify it retrieves the policy section (after allowing necessary tools permissions)
 
-```bash
-MCP_POLICY_CONFIG="./policies/*.md"
+### Try it in a Subagent
+
+Create a simple agent that uses the policy server to fetch and reference policies (for example, './.claude/agents/policy-tester.md'):
+
+```markdown
+---
+name: policy-tester
+description: Display design policy
+tools: mcp__policy-server__fetch_policies
+---
+
+CRITICAL: use mcp__policy-server__fetch_policies to ONLY retrieve `§DESIGN.1` before proceeding.
+
+Summarize the key points of §DESIGN.1 in your response.
 ```
 
-Supports brace expansion:
-```bash
-MCP_POLICY_CONFIG="./{policies,docs}/*.md"
+The first statement instructs the agent to fetch the policy section before using it. The content of `§DESIGN.1` will be retrieved from your policy file and added to the subagent's context.
+
+The second statement directly references the section (which is now in the context) and asks the agent to summarize the fetched policy section.
+
+Restart Claude Code, then run the `policy-tester` subagent, and it should fetch and summarize the YAGNI policy section:
+
 ```
-
-### JSON File
-
-If not set, server loads `./policies.json` by default.
-
-Create `policies.json` for multiple patterns:
-```json
-{
-  "files": [
-    "./policies/policy-*.md",
-    "./policies/**/rules-*.md"
-  ]
-}
+> run @agent-policy-tester
 ```
-
-Point to it:
-```bash
-MCP_POLICY_CONFIG="./policies.json"
-```
-
-### Inline JSON
-
-```bash
-MCP_POLICY_CONFIG='{"files": ["./policies/*.md"]}'
-```
-
-### Glob Patterns
-
-- `*` - Match any characters (e.g., `./policies/policy-*.md`)
-- `**` - Include subdirectories (e.g., `./policies/**/*.md`)
-- `{a,b}` - Alternatives (e.g., `./{policies,docs}/*.md`)
-
-See [Configuration Reference](docs/CONFIGURATION_REFERENCE.md) for details.
-
-## Removing the Server
-
-```bash
-claude mcp remove policy-server -s project
-```
-
-## Getting Started
-
-1. [Install the server](docs/INSTALLATION.md)
-2. Create policy files with § notation (see [Getting Started](docs/GETTING_STARTED.md))
-3. Configure `MCP_POLICY_CONFIG`
-4. Create subagents that reference policies
-5. Restart Claude Code
 
 ## Available MCP Tools
 
 ### `mcp__policy-server__fetch_policies` - Retrieve Policy Sections
 Fetch sections with automatic reference resolution:
 ```json
-{"sections": ["§API.7", "§CODE.3"]}
+{"sections": ["§PREFIX.1", "§PREFIX.2"]}
 ```
 
 ### `mcp__policy-server__extract_references` - Find § References
@@ -200,7 +149,7 @@ Scan files for policy references:
 ### `mcp__policy-server__validate_references` - Check References Exist
 Verify sections exist:
 ```json
-{"references": ["§API.7", "§CODE.3"]}
+{"references": ["§PREFIX.1", "§PREFIX.2"]}
 ```
 
 ### `mcp__policy-server__list_sources` - See Available Policies
