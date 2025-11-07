@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.2.3 (2025-11-07)
+
+### Documentation
+
+- Improved tool instructions and descriptions in server configuration for clarity
+- Enhanced README documentation with better command syntax examples
+- Fixed formatting and removed redundant statements
+
+---
+
 ## v0.2.2 (2025-11-01)
 
 ### Improvements
