@@ -1,6 +1,6 @@
 {
   "name": "@andrebremer/mcp-policy-server",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "MCP server providing token-efficient access to policy documentation via § notation",
   "main": "dist/index.js",
   "bin": {

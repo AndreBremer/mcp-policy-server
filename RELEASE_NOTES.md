@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.2.3 (2025-11-07)
+## v0.2.4 (2025-11-07)
 
 ### Documentation
 
