@@ -38,7 +38,7 @@ See [Getting Started Guide](GETTING_STARTED.md) to create policies.json and poli
 claude mcp add-json policy-server --scope project '{
  "type": "stdio", 
  "command": "npx", 
- "args": ["-y", "@andrebremer/mcp-policy-server"], 
+ "args": ["-y", "@rcrsr/mcp-policy-server"], 
  "env": {"MCP_POLICY_CONFIG": "[relative/path/to/policies]"}
 }'
 ```
@@ -48,7 +48,7 @@ claude mcp add-json policy-server --scope project '{
 ```powershell
 claude mcp add-json policy-server ('{' `
   '"type": "stdio", "command": "cmd",' + `
-  '"args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"], ' + `
+  '"args": ["/c", "npx", "-y", "@rcrsr/mcp-policy-server"], ' + `
   '"env": {"MCP_POLICY_CONFIG": "[relative/path/to/policies]"}}') `
   --scope project
 ```
@@ -65,7 +65,7 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
   "mcpServers": {
     "policy-server": {
       "command": "npx",
-      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "args": ["-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "[relative/path/to/policies]"
       }
@@ -80,7 +80,7 @@ Create a `.mcp.json` file at the root of your project (the directory containing 
   "mcpServers": {
     "policy-server": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "args": ["/c", "npx", "-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "[relative/path/to/policies]"
       }
@@ -120,7 +120,7 @@ For development, local testing, or when you want to modify the server code:
 #### Step 1: Clone and Build
 
 ```bash
-git clone https://github.com/AndreBremer/mcp-policy-server.git
+git clone https://github.com/rcrsr/mcp-policy-server.git
 cd mcp-policy-server
 npm install
 npm run build

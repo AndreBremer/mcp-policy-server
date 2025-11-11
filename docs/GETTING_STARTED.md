@@ -51,7 +51,7 @@ Set `MCP_POLICY_CONFIG` environment variable to a glob pattern in your `.mcp.jso
   "mcpServers": {
     "policy-server": {
       "command": "npx",
-      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "args": ["-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "./policies/*.md"
       }
@@ -66,7 +66,7 @@ Set `MCP_POLICY_CONFIG` environment variable to a glob pattern in your `.mcp.jso
   "mcpServers": {
     "policy-server": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "args": ["/c", "npx", "-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "./policies/*.md"
       }
@@ -102,7 +102,7 @@ Set `MCP_POLICY_CONFIG` to the JSON file path (or omit to use default `./policie
   "mcpServers": {
     "policy-server": {
       "command": "npx",
-      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "args": ["-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "./policies/policies.json"
       }
@@ -117,7 +117,7 @@ Set `MCP_POLICY_CONFIG` to the JSON file path (or omit to use default `./policie
   "mcpServers": {
     "policy-server": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "args": ["/c", "npx", "-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "./policies/policies.json"
       }
@@ -138,7 +138,7 @@ Pass the configuration directly as a JSON string:
   "mcpServers": {
     "policy-server": {
       "command": "npx",
-      "args": ["-y", "@andrebremer/mcp-policy-server"],
+      "args": ["-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "{\"files\": [\"./policies/*.md\"]}"
       }
@@ -153,7 +153,7 @@ Pass the configuration directly as a JSON string:
   "mcpServers": {
     "policy-server": {
       "command": "cmd",
-      "args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"],
+      "args": ["/c", "npx", "-y", "@rcrsr/mcp-policy-server"],
       "env": {
         "MCP_POLICY_CONFIG": "{\"files\": [\"./policies/*.md\"]}"
       }

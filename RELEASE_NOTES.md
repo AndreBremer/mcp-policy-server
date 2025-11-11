@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.3.0 (2025-11-10)
+
+### Documentation
+
+- Moved to @rcrsr namespace and repo
+
 ## v0.2.4 (2025-11-07)
 
 ### Documentation
@@ -32,7 +38,7 @@
 ### Bug Fixes
 
 - Fixed npx compatibility on Windows by adding scoped package name to bin entries
-- Package now registers both `@andrebremer/mcp-policy-server` and `mcp-policy-server` as executables
+- Package now registers both `@rcrsr/mcp-policy-server` and `mcp-policy-server` as executables
 - Resolves "is not recognized as an internal or external command" error when using npx on Windows
 
 ---

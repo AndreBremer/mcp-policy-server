@@ -84,7 +84,7 @@ The following commands add the MCP Policy Server to your project in Claude Code 
 claude mcp add-json policy-server --scope project '{
  "type": "stdio", 
  "command": "npx", 
- "args": ["-y", "@andrebremer/mcp-policy-server"], 
+ "args": ["-y", "@rcrsr/mcp-policy-server"], 
  "env": {"MCP_POLICY_CONFIG": "./policies/*.md"}
 }'
 ```
@@ -93,7 +93,7 @@ claude mcp add-json policy-server --scope project '{
 ```powershell
 claude mcp add-json policy-server ('{' `
   '"type": "stdio", "command": "cmd",' + `
-  '"args": ["/c", "npx", "-y", "@andrebremer/mcp-policy-server"], ' + `
+  '"args": ["/c", "npx", "-y", "@rcrsr/mcp-policy-server"], ' + `
   '"env": {"MCP_POLICY_CONFIG": "./policies/*.md"}}') `
   --scope project
 ```

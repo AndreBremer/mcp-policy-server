@@ -1,20 +1,20 @@
 {
-  "name": "@andrebremer/mcp-policy-server",
-  "version": "0.2.4",
+  "name": "@rcrsr/mcp-policy-server",
+  "version": "0.3.0",
   "description": "MCP server providing token-efficient access to policy documentation via § notation",
   "main": "dist/index.js",
   "bin": {
-    "@andrebremer/mcp-policy-server": "dist/index.js",
+    "@rcrsr/mcp-policy-server": "dist/index.js",
     "mcp-policy-server": "dist/index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/AndreBremer/mcp-policy-server.git"
+    "url": "git+https://github.com/rcrsr/mcp-policy-server.git"
   },
   "bugs": {
-    "url": "https://github.com/AndreBremer/mcp-policy-server/issues"
+    "url": "https://github.com/rcrsr/mcp-policy-server/issues"
   },
-  "homepage": "https://github.com/AndreBremer/mcp-policy-server#readme",
+  "homepage": "https://github.com/rcrsr/mcp-policy-server#readme",
   "scripts": {
     "start": "node dist/index.js",
     "test": "jest",
@@ -42,8 +42,8 @@
     "ai-agents",
     "claude"
   ],
-  "author": "Andre Bremer",
   "license": "GPL-3.0-or-later",
+  "author": "André Bremer",
   "files": [
     "dist/**/*",
     "README.md",
